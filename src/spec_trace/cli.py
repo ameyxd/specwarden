@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -15,6 +16,30 @@ from .spec import (
 )
 from .trace import trace_commit
 
+SETTINGS_TEMPLATE = {
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+                "hooks": [
+                    {"type": "command", "command": "python -m spec_trace.hooks.pre_tool_use"}
+                ],
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+                "hooks": [
+                    {"type": "command", "command": "python -m spec_trace.hooks.post_tool_use"}
+                ],
+            }
+        ],
+        "SessionStart": [
+            {"hooks": [{"type": "command", "command": "python -m spec_trace.hooks.session_start"}]}
+        ],
+    }
+}
+
 app = typer.Typer(add_completion=False, help="spec-trace: spec-first discipline, with teeth.")
 
 ROOT_OPTION = typer.Option(None, "--root", help="Repo root (defaults to current directory).")
@@ -26,10 +51,15 @@ def _resolve_root(root: Path | None) -> Path:
 
 @app.command()
 def init(root: Path | None = ROOT_OPTION) -> None:
-    """Create the .claude/ layout in the current repo."""
+    """Create the .claude/ layout and a default settings.json wiring the hooks."""
     paths = RepoPaths(_resolve_root(root))
     paths.ensure_dirs()
-    typer.echo(f"initialized: {paths.claude_dir}")
+    settings_path = paths.claude_dir / "settings.json"
+    if not settings_path.exists():
+        settings_path.write_text(json.dumps(SETTINGS_TEMPLATE, indent=2) + "\n", encoding="utf-8")
+        typer.echo(f"initialized: {paths.claude_dir} (wrote settings.json)")
+    else:
+        typer.echo(f"initialized: {paths.claude_dir} (settings.json already exists; left alone)")
 
 
 @app.command("new")

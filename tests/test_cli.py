@@ -73,6 +73,37 @@ def test_trace_no_trailer_exits_1(runner: CliRunner, tmp_path: Path):
     assert result.exit_code == 1
 
 
+def test_init_writes_settings_with_hooks(runner: CliRunner, tmp_path: Path):
+    result = runner.invoke(app, ["init", "--root", str(tmp_path)])
+    assert result.exit_code == 0, result.stdout
+
+    settings_path = tmp_path / ".claude" / "settings.json"
+    assert settings_path.exists()
+
+    import json
+
+    settings = json.loads(settings_path.read_text())
+    assert "PreToolUse" in settings["hooks"]
+    assert "PostToolUse" in settings["hooks"]
+    assert "SessionStart" in settings["hooks"]
+
+    pre = settings["hooks"]["PreToolUse"][0]
+    assert pre["matcher"] == "Edit|Write|MultiEdit|NotebookEdit"
+    assert pre["hooks"][0]["command"] == "python -m spec_trace.hooks.pre_tool_use"
+
+
+def test_init_preserves_existing_settings(runner: CliRunner, tmp_path: Path):
+    (tmp_path / ".claude").mkdir()
+    existing = '{"existing": "value"}'
+    (tmp_path / ".claude" / "settings.json").write_text(existing)
+
+    result = runner.invoke(app, ["init", "--root", str(tmp_path)])
+    assert result.exit_code == 0, result.stdout
+
+    # init should not clobber an existing settings file
+    assert (tmp_path / ".claude" / "settings.json").read_text() == existing
+
+
 def test_git_hook_install_and_uninstall(runner: CliRunner, tmp_path: Path):
     import subprocess
 
