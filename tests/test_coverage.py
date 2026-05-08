@@ -39,3 +39,14 @@ def test_compute_coverage_counts_trailers(repo: Path):
 def test_compute_coverage_respects_last(repo: Path):
     report = compute_coverage(repo, last=2)
     assert report.total == 2
+
+
+def test_compute_coverage_empty_repo(tmp_path: Path):
+    _git(tmp_path, "init", "-q", "-b", "main")
+
+    report = compute_coverage(tmp_path, last=10)
+
+    assert report.total == 0
+    assert report.covered == 0
+    assert report.uncovered_hashes == ()
+    assert report.percentage == 0.0
