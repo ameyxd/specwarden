@@ -29,6 +29,7 @@ packages = ["src/spec_trace"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 addopts = "-q --strict-markers"
 
 [tool.ruff]

@@ -1,6 +1,8 @@
+import re
+
 from spec_trace import __version__
 
 
-def test_version_is_a_string():
+def test_version_is_semver_shaped():
     assert isinstance(__version__, str)
-    assert __version__.count(".") == 2
+    assert re.fullmatch(r"\d+\.\d+\.\d+", __version__) is not None
