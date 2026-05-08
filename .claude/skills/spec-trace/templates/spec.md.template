@@ -1,0 +1,25 @@
+# {spec_id}: {title}
+
+**Created:** {created}
+**Status:** active
+**Author:** {author}
+
+## Assumptions
+What we are taking as given. If any of these turns out to be false, the spec is invalid and must be revised before more code lands.
+
+- TODO
+
+## Scope
+What this change is. Concrete, files-and-functions level if possible.
+
+- TODO
+
+## Non-goals
+What this change is explicitly not. The point of this section is to prevent scope creep mid-implementation.
+
+- TODO
+
+## Success criteria
+How we will know we are done. Must be checkable.
+
+- [ ] TODO

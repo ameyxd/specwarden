@@ -1,0 +1,5 @@
+## {iso_timestamp}
+- File: {file_path}
+- Lines: {line_range}
+- Summary: {summary}
+- Tool: {tool}
