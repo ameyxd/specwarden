@@ -49,3 +49,19 @@ def test_trace_returns_none_when_no_trailer(repo: Path):
     assert result.spec_id is None
     assert result.spec_text == ""
     assert result.decisions_text == ""
+
+
+def test_trace_with_trailer_but_missing_files(tmp_path: Path):
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "config", "user.email", "t@t.com")
+    _git(tmp_path, "config", "user.name", "t")
+    (tmp_path / "f.txt").write_text("a")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-q", "-m", "covered\n\nSpec: 2026-05-07_ghost")
+    sha = _git(tmp_path, "rev-parse", "HEAD").strip()
+
+    result = trace_commit(tmp_path, sha)
+
+    assert result.spec_id == "2026-05-07_ghost"
+    assert result.spec_text == ""
+    assert result.decisions_text == ""
