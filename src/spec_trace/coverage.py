@@ -12,7 +12,7 @@ _TRAILER = re.compile(r"^Spec:\s*(?P<id>\S+)\s*$", re.MULTILINE)
 class CoverageReport:
     total: int
     covered: int
-    uncovered_hashes: list[str]
+    uncovered_hashes: tuple[str, ...]
 
     @property
     def percentage(self) -> float:
@@ -21,16 +21,23 @@ class CoverageReport:
         return 100.0 * self.covered / self.total
 
 
+_EMPTY_REPORT = CoverageReport(total=0, covered=0, uncovered_hashes=())
+
+
 def compute_coverage(repo: Path, *, last: int) -> CoverageReport:
-    out = subprocess.run(
-        ["git", "log", f"-n{last}", "--format=%H%x1f%B%x1e"],
-        cwd=repo,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
+    try:
+        result = subprocess.run(
+            ["git", "log", f"-n{last}", "--format=%H%x1f%B%x1e"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError:
+        return _EMPTY_REPORT
+    out = result.stdout
     if not out:
-        return CoverageReport(total=0, covered=0, uncovered_hashes=[])
+        return _EMPTY_REPORT
 
     records = [r for r in out.split("\x1e") if r.strip()]
     total = 0
@@ -46,4 +53,4 @@ def compute_coverage(repo: Path, *, last: int) -> CoverageReport:
             covered += 1
         else:
             uncovered.append(sha)
-    return CoverageReport(total=total, covered=covered, uncovered_hashes=uncovered)
+    return CoverageReport(total=total, covered=covered, uncovered_hashes=tuple(uncovered))
