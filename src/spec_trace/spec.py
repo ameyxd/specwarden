@@ -19,6 +19,10 @@ class SpecNotFound(SpecError):
     pass
 
 
+class NoActiveSpec(SpecError):
+    pass
+
+
 _SLUG_KEEP = re.compile(r"[^a-z0-9]+")
 
 
@@ -102,10 +106,12 @@ def deactivate_active(paths: RepoPaths) -> None:
 def mark_done(paths: RepoPaths) -> str:
     spec_id = paths.active_spec_id()
     if spec_id is None:
-        raise SpecNotFound("no active spec")
+        raise NoActiveSpec("no active spec")
     spec_file = paths.specs_dir / f"{spec_id}.md"
     text = spec_file.read_text(encoding="utf-8")
     updated = text.replace("**Status:** active", "**Status:** completed", 1)
+    if updated == text:
+        raise SpecError(f"spec {spec_id} has no '**Status:** active' line; cannot mark done")
     spec_file.write_text(updated, encoding="utf-8")
     deactivate_active(paths)
     return spec_id

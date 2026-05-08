@@ -5,12 +5,14 @@ import pytest
 
 from spec_trace.paths import RepoPaths
 from spec_trace.spec import (
+    NoActiveSpec,
     SpecAlreadyExists,
     SpecError,
     SpecNotFound,
     activate_spec,
     create_spec,
     deactivate_active,
+    mark_done,
     slugify,
 )
 
@@ -99,10 +101,29 @@ def test_mark_done_flips_status_and_clears_marker(tmp_path: Path):
     spec_id = create_spec(paths, "demo", author="A", today=fixed_date)
     activate_spec(paths, spec_id)
 
-    from spec_trace.spec import mark_done
-
     mark_done(paths)
 
     assert paths.active_spec_id() is None
     body = (paths.specs_dir / f"{spec_id}.md").read_text(encoding="utf-8")
     assert "**Status:** completed" in body
+
+
+def test_mark_done_raises_when_no_active_spec(tmp_path: Path):
+    paths = RepoPaths(tmp_path)
+    paths.ensure_dirs()
+    with pytest.raises(NoActiveSpec):
+        mark_done(paths)
+
+
+def test_mark_done_raises_when_status_line_missing(tmp_path: Path):
+    paths = RepoPaths(tmp_path)
+    paths.ensure_dirs()
+    spec_id = create_spec(paths, "demo", author="A", today=fixed_date)
+    activate_spec(paths, spec_id)
+
+    spec_file = paths.specs_dir / f"{spec_id}.md"
+    body = spec_file.read_text(encoding="utf-8")
+    spec_file.write_text(body.replace("**Status:** active", "Status: anything else"))
+
+    with pytest.raises(SpecError, match="cannot mark done"):
+        mark_done(paths)
