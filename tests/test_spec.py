@@ -91,3 +91,18 @@ def test_create_spec_raises_on_empty_slug(tmp_path: Path):
     paths.ensure_dirs()
     with pytest.raises(SpecError, match="empty slug"):
         create_spec(paths, "!!!", author="A", today=fixed_date)
+
+
+def test_mark_done_flips_status_and_clears_marker(tmp_path: Path):
+    paths = RepoPaths(tmp_path)
+    paths.ensure_dirs()
+    spec_id = create_spec(paths, "demo", author="A", today=fixed_date)
+    activate_spec(paths, spec_id)
+
+    from spec_trace.spec import mark_done
+
+    mark_done(paths)
+
+    assert paths.active_spec_id() is None
+    body = (paths.specs_dir / f"{spec_id}.md").read_text(encoding="utf-8")
+    assert "**Status:** completed" in body

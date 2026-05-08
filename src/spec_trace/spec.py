@@ -97,3 +97,15 @@ def activate_spec(paths: RepoPaths, spec_id: str) -> None:
 def deactivate_active(paths: RepoPaths) -> None:
     if paths.active_marker.exists():
         paths.active_marker.unlink()
+
+
+def mark_done(paths: RepoPaths) -> str:
+    spec_id = paths.active_spec_id()
+    if spec_id is None:
+        raise SpecNotFound("no active spec")
+    spec_file = paths.specs_dir / f"{spec_id}.md"
+    text = spec_file.read_text(encoding="utf-8")
+    updated = text.replace("**Status:** active", "**Status:** completed", 1)
+    spec_file.write_text(updated, encoding="utf-8")
+    deactivate_active(paths)
+    return spec_id
