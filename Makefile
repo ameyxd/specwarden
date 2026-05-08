@@ -11,8 +11,8 @@ lint:
 	ruff format --check .
 
 fmt:
-	ruff format .
 	ruff check --fix .
+	ruff format .
 
 eval:
 	python evals/run_eval.py
