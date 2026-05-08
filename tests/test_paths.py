@@ -28,3 +28,10 @@ def test_active_spec_id_strips_whitespace(tmp_path: Path):
     p.ensure_dirs()
     p.active_marker.write_text("  2026-05-07_demo \n", encoding="utf-8")
     assert p.active_spec_id() == "2026-05-07_demo"
+
+
+def test_active_spec_id_returns_none_for_blank_file(tmp_path: Path):
+    p = RepoPaths(tmp_path)
+    p.ensure_dirs()
+    p.active_marker.write_text("   \n", encoding="utf-8")
+    assert p.active_spec_id() is None
