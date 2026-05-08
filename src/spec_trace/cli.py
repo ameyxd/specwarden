@@ -121,3 +121,25 @@ def trace(
 def version() -> None:
     """Print the installed version."""
     typer.echo(__version__)
+
+
+git_hook_app = typer.Typer(help="Manage the prepare-commit-msg git hook.")
+app.add_typer(git_hook_app, name="git-hook")
+
+
+@git_hook_app.command("install")
+def git_hook_install(root: Path | None = ROOT_OPTION) -> None:
+    """Install the prepare-commit-msg hook."""
+    from .git_hook import install_hook
+
+    path = install_hook(_resolve_root(root))
+    typer.echo(f"installed: {path}")
+
+
+@git_hook_app.command("uninstall")
+def git_hook_uninstall(root: Path | None = ROOT_OPTION) -> None:
+    """Uninstall the prepare-commit-msg hook (if installed by spec-trace)."""
+    from .git_hook import uninstall_hook
+
+    uninstall_hook(_resolve_root(root))
+    typer.echo("uninstalled.")
