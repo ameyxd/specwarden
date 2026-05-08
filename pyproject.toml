@@ -39,7 +39,7 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "PTH"]
-ignore = ["E501", "B008"]  # E501: line length handled by formatter; B008: Typer uses function-call defaults by design
+ignore = ["E501"]  # line length handled by formatter
 
 [tool.ruff.format]
 quote-style = "double"

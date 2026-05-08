@@ -17,15 +17,17 @@ from .trace import trace_commit
 
 app = typer.Typer(add_completion=False, help="spec-trace: spec-first discipline, with teeth.")
 
+ROOT_OPTION = typer.Option(None, "--root", help="Repo root (defaults to current directory).")
 
-def _root_option() -> Path:
-    return typer.Option(Path.cwd(), "--root", help="Repo root.")
+
+def _resolve_root(root: Path | None) -> Path:
+    return root if root is not None else Path.cwd()
 
 
 @app.command()
-def init(root: Path = _root_option()) -> None:
+def init(root: Path | None = ROOT_OPTION) -> None:
     """Create the .claude/ layout in the current repo."""
-    paths = RepoPaths(root)
+    paths = RepoPaths(_resolve_root(root))
     paths.ensure_dirs()
     typer.echo(f"initialized: {paths.claude_dir}")
 
@@ -34,10 +36,10 @@ def init(root: Path = _root_option()) -> None:
 def new_cmd(
     title: str,
     author: str = typer.Option(..., "--author", "-a"),
-    root: Path = _root_option(),
+    root: Path | None = ROOT_OPTION,
 ) -> None:
     """Create a new spec from the four-section template."""
-    paths = RepoPaths(root)
+    paths = RepoPaths(_resolve_root(root))
     try:
         spec_id = create_spec(paths, title, author=author)
     except SpecError as exc:
@@ -47,9 +49,9 @@ def new_cmd(
 
 
 @app.command()
-def activate(spec_id: str, root: Path = _root_option()) -> None:
+def activate(spec_id: str, root: Path | None = ROOT_OPTION) -> None:
     """Mark a spec as the active one — subsequent edits get logged here."""
-    paths = RepoPaths(root)
+    paths = RepoPaths(_resolve_root(root))
     try:
         activate_spec(paths, spec_id)
     except SpecError as exc:
@@ -59,9 +61,9 @@ def activate(spec_id: str, root: Path = _root_option()) -> None:
 
 
 @app.command()
-def done(root: Path = _root_option()) -> None:
+def done(root: Path | None = ROOT_OPTION) -> None:
     """Mark the active spec as completed and clear the marker."""
-    paths = RepoPaths(root)
+    paths = RepoPaths(_resolve_root(root))
     try:
         spec_id = mark_done(paths)
     except SpecError as exc:
@@ -71,9 +73,9 @@ def done(root: Path = _root_option()) -> None:
 
 
 @app.command()
-def status(root: Path = _root_option()) -> None:
+def status(root: Path | None = ROOT_OPTION) -> None:
     """Print the active spec, if any."""
-    paths = RepoPaths(root)
+    paths = RepoPaths(_resolve_root(root))
     spec_id = paths.active_spec_id()
     if spec_id is None:
         typer.echo("no active spec — run `spec-trace new <title>` to start.")
@@ -84,10 +86,10 @@ def status(root: Path = _root_option()) -> None:
 @app.command()
 def coverage(
     last: int = typer.Option(50, "--last", "-n"),
-    root: Path = _root_option(),
+    root: Path | None = ROOT_OPTION,
 ) -> None:
     """Report Spec: trailer coverage over the last N commits."""
-    report = compute_coverage(root, last=last)
+    report = compute_coverage(_resolve_root(root), last=last)
     typer.echo(
         f"{report.covered}/{report.total} commits have spec coverage ({report.percentage:.0f}%)"
     )
@@ -98,12 +100,15 @@ def coverage(
 
 
 @app.command()
-def trace(commit: str = typer.Argument("HEAD"), root: Path = _root_option()) -> None:
+def trace(
+    commit: str = typer.Argument("HEAD"),
+    root: Path | None = ROOT_OPTION,
+) -> None:
     """Print the full chain (commit -> spec -> decisions)."""
-    result = trace_commit(root, commit)
+    result = trace_commit(_resolve_root(root), commit)
     typer.echo(f"commit: {result.commit_sha}")
     if result.spec_id is None:
-        typer.echo("no Spec: trailer on this commit.")
+        typer.echo("no Spec: trailer on this commit.", err=True)
         raise typer.Exit(code=1)
     typer.echo(f"spec:   {result.spec_id}")
     typer.echo("---")
