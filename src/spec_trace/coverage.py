@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-_TRAILER = re.compile(r"^Spec:\s*(?P<id>\S+)\s*$", re.MULTILINE)
+from .trailers import SPEC_TRAILER
 
 
 @dataclass(frozen=True)
@@ -49,7 +48,7 @@ def compute_coverage(repo: Path, *, last: int) -> CoverageReport:
         if not sha:
             continue
         total += 1
-        if _TRAILER.search(body):
+        if SPEC_TRAILER.search(body):
             covered += 1
         else:
             uncovered.append(sha)
