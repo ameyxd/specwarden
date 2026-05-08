@@ -6,6 +6,7 @@ import pytest
 from spec_trace.paths import RepoPaths
 from spec_trace.spec import (
     SpecAlreadyExists,
+    SpecError,
     SpecNotFound,
     activate_spec,
     create_spec,
@@ -74,3 +75,19 @@ def test_deactivate_clears_marker(tmp_path: Path):
     deactivate_active(paths)
 
     assert paths.active_spec_id() is None
+
+
+def test_deactivate_when_no_marker_is_noop(tmp_path: Path):
+    paths = RepoPaths(tmp_path)
+    paths.ensure_dirs()
+
+    deactivate_active(paths)
+
+    assert paths.active_spec_id() is None
+
+
+def test_create_spec_raises_on_empty_slug(tmp_path: Path):
+    paths = RepoPaths(tmp_path)
+    paths.ensure_dirs()
+    with pytest.raises(SpecError, match="empty slug"):
+        create_spec(paths, "!!!", author="A", today=fixed_date)
