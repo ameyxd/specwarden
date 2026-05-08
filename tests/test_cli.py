@@ -71,3 +71,18 @@ def test_trace_no_trailer_exits_1(runner: CliRunner, tmp_path: Path):
     result = runner.invoke(app, ["trace", "HEAD", "--root", str(tmp_path)])
 
     assert result.exit_code == 1
+
+
+def test_git_hook_install_and_uninstall(runner: CliRunner, tmp_path: Path):
+    import subprocess
+
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp_path, check=True)
+
+    r1 = runner.invoke(app, ["git-hook", "install", "--root", str(tmp_path)])
+    assert r1.exit_code == 0, r1.stdout
+    hook = tmp_path / ".git" / "hooks" / "prepare-commit-msg"
+    assert hook.is_file()
+
+    r2 = runner.invoke(app, ["git-hook", "uninstall", "--root", str(tmp_path)])
+    assert r2.exit_code == 0, r2.stdout
+    assert not hook.exists()

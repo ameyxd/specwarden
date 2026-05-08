@@ -66,3 +66,37 @@ def test_uninstall_preserves_unmanaged_hook(repo: Path):
 
     assert hook.exists()
     assert "hand-written" in hook.read_text()
+
+
+def test_install_refuses_unmanaged_hook(repo: Path):
+    hook = repo / ".git" / "hooks" / "prepare-commit-msg"
+    hook.parent.mkdir(parents=True, exist_ok=True)
+    hook.write_text("#!/bin/sh\necho hand-written\n")
+
+    with pytest.raises(RuntimeError, match="already exists"):
+        install_hook(repo)
+
+
+def test_install_is_idempotent_on_managed_hook(repo: Path):
+    install_hook(repo)
+    install_hook(repo)
+    hook = repo / ".git" / "hooks" / "prepare-commit-msg"
+    text = hook.read_text()
+    assert text.count("# managed-by: spec-trace") == 1
+
+
+def test_install_rejects_non_git_repo(tmp_path: Path):
+    with pytest.raises(RuntimeError, match=".git"):
+        install_hook(tmp_path)
+
+
+def test_hook_skips_double_trailer(repo: Path):
+    install_hook(repo)
+    (repo / ".claude" / "specs" / "active").write_text("2026-05-07_demo\n")
+
+    (repo / "f.txt").write_text("hi")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "do thing\n\nSpec: 2026-05-07_demo")
+
+    body = _git(repo, "log", "-1", "--format=%B")
+    assert body.count("Spec: 2026-05-07_demo") == 1

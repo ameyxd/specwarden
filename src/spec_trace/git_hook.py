@@ -3,6 +3,10 @@ from __future__ import annotations
 import stat
 from pathlib import Path
 
+# `\\n` in the printf line is intentional: Python writes a literal `\n` to disk,
+# which bash printf then interprets as a real newline. Do not "fix" to `\n`.
+# `grep -qxF` does whole-line fixed-string matching — robust against any
+# regex metacharacters that might appear in future spec ID formats.
 HOOK_SCRIPT = """\
 #!/usr/bin/env bash
 # managed-by: spec-trace
@@ -11,7 +15,7 @@ COMMIT_MSG_FILE="$1"
 ACTIVE_FILE="$(git rev-parse --show-toplevel)/.claude/specs/active"
 if [ -f "$ACTIVE_FILE" ]; then
     SPEC_ID="$(tr -d '[:space:]' < "$ACTIVE_FILE")"
-    if [ -n "$SPEC_ID" ] && ! grep -q "^Spec: $SPEC_ID$" "$COMMIT_MSG_FILE"; then
+    if [ -n "$SPEC_ID" ] && ! grep -qxF "Spec: $SPEC_ID" "$COMMIT_MSG_FILE"; then
         printf "\\nSpec: %s\\n" "$SPEC_ID" >> "$COMMIT_MSG_FILE"
     fi
 fi
@@ -25,6 +29,8 @@ def _hook_path(repo: Path) -> Path:
 
 
 def install_hook(repo: Path) -> Path:
+    if not (repo / ".git").is_dir():
+        raise RuntimeError(f"{repo} does not contain a .git directory.")
     path = _hook_path(repo)
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and MANAGED_MARKER not in path.read_text(encoding="utf-8"):
