@@ -35,11 +35,9 @@ def append_decision(
         f"- Summary: {entry.summary}\n"
         f"- Tool: {entry.tool}\n\n"
     )
-    if not log.exists():
-        header = (
-            f"# Decisions: {spec_id}\n\nAppend-only log of changes authorized by this spec.\n\n"
-        )
-        log.write_text(header + block, encoding="utf-8")
-    else:
-        with log.open("a", encoding="utf-8") as f:
-            f.write(block)
+    with log.open("a", encoding="utf-8") as f:
+        if f.tell() == 0:
+            f.write(
+                f"# Decisions: {spec_id}\n\nAppend-only log of changes authorized by this spec.\n\n"
+            )
+        f.write(block)

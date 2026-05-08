@@ -43,3 +43,5 @@ def test_append_is_appendonly(tmp_path: Path):
     text = (paths.decisions_dir / "spec1.md").read_text(encoding="utf-8")
     assert text.count("## 2026-05-07T14:32:18+00:00") == 2
     assert text.index("first") < text.index("second")
+    assert text.count("# Decisions:") == 1
+    assert "\n\n## " in text
