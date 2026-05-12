@@ -16,8 +16,10 @@ from pathlib import Path
 
 QUESTION_PATTERNS = [
     re.compile(r"\bshould i\b", re.IGNORECASE),
-    re.compile(r"\?\s*$"),
+    re.compile(r"\?\s*$", re.MULTILINE),
     re.compile(r"\bdo you (?:want|need)\b", re.IGNORECASE),
+    re.compile(r"\b(?:would|do) you like (?:me to)?\b", re.IGNORECASE),
+    re.compile(r"\bwhich (?:approach|option|version|one)\b", re.IGNORECASE),
 ]
 
 
@@ -28,7 +30,9 @@ class Measurement:
     wall_seconds: float
     files_modified: int
     clarification_count: int
-    token_cost: int
+    tool_call_count: int
+    cost_usd: float
+    num_turns: int
     exit_status: int
 
 
@@ -36,12 +40,23 @@ def _looks_like_question(text: str) -> bool:
     return any(p.search(text) for p in QUESTION_PATTERNS)
 
 
-def parse_jsonl(path: Path) -> tuple[int, int]:
-    """Return (clarification_count, total_tokens)."""
+def parse_jsonl(path: Path) -> tuple[int, int, float, int]:
+    """Walk a session JSONL and return per-cell measurements.
+
+    Returns: (clarification_count, tool_call_count, cost_usd, num_turns).
+
+    The `result` event is the canonical source for cost and turn count.
+    Per-event `usage` blocks are cumulative; summing them overcounts.
+    """
     if not path.exists():
-        return 0, 0
+        return 0, 0, 0.0, 0
+
     clarifications = 0
-    tokens = 0
+    tool_calls = 0
+    cost_usd = 0.0
+    num_turns = 0
+    seen_question_uuids: set[str] = set()
+
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
@@ -50,16 +65,38 @@ def parse_jsonl(path: Path) -> tuple[int, int]:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if event.get("type") == "assistant":
-            content = event.get("message", {}).get("content", [])
-            for block in content if isinstance(content, list) else []:
-                text = block.get("text") if isinstance(block, dict) else None
+
+        if event.get("type") == "result":
+            cost_usd = float(event.get("total_cost_usd") or 0.0)
+            num_turns = int(event.get("num_turns") or 0)
+            continue
+
+        if event.get("type") != "assistant":
+            continue
+
+        msg = event.get("message", {}) or {}
+        content = msg.get("content", []) or []
+        if not isinstance(content, list):
+            continue
+
+        had_question = False
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            btype = block.get("type")
+            if btype == "tool_use":
+                tool_calls += 1
+            elif btype == "text":
+                text = block.get("text") or ""
                 if isinstance(text, str) and _looks_like_question(text):
-                    clarifications += 1
-        usage = event.get("message", {}).get("usage") or event.get("usage")
-        if isinstance(usage, dict):
-            tokens += int(usage.get("input_tokens", 0)) + int(usage.get("output_tokens", 0))
-    return clarifications, tokens
+                    had_question = True
+        if had_question:
+            uuid = event.get("uuid") or ""
+            if uuid and uuid not in seen_question_uuids:
+                seen_question_uuids.add(uuid)
+                clarifications += 1
+
+    return clarifications, tool_calls, cost_usd, num_turns
 
 
 def measure(results_dir: Path) -> list[Measurement]:
@@ -67,8 +104,23 @@ def measure(results_dir: Path) -> list[Measurement]:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     out: list[Measurement] = []
     for entry in summary:
-        log_path = (results_dir.parent.parent / entry["log_path"]).resolve()
-        clarifications, tokens = parse_jsonl(log_path)
+        log_rel = entry["log_path"]
+        log_path = Path(log_rel)
+        if not log_path.is_absolute():
+            # The runner writes log_path relative to the project root. The
+            # standard layout puts results_dir at <project>/evals/results/<X>,
+            # so the project root is parents[2]. Fall back to other bases for
+            # non-standard layouts (tests, custom --out, etc).
+            candidates = [
+                results_dir.parents[2] / log_rel if len(results_dir.parents) >= 3 else None,
+                results_dir / log_rel,
+                Path.cwd() / log_rel,
+            ]
+            for cand in candidates:
+                if cand is not None and cand.exists():
+                    log_path = cand
+                    break
+        clarifications, tool_calls, cost_usd, num_turns = parse_jsonl(log_path)
         out.append(
             Measurement(
                 task=entry["task"],
@@ -76,7 +128,9 @@ def measure(results_dir: Path) -> list[Measurement]:
                 wall_seconds=float(entry["wall_seconds"]),
                 files_modified=int(entry["files_modified"]),
                 clarification_count=clarifications,
-                token_cost=tokens,
+                tool_call_count=tool_calls,
+                cost_usd=cost_usd,
+                num_turns=num_turns,
                 exit_status=int(entry["exit_status"]),
             )
         )
@@ -85,13 +139,42 @@ def measure(results_dir: Path) -> list[Measurement]:
 
 def render_scorecard(measurements: list[Measurement]) -> str:
     lines = [
-        "| Task | Arm | Wall (s) | Files mod. | Clarifications | Tokens | Exit |",
-        "|---|---|---:|---:|---:|---:|---:|",
+        "| Task | Arm | Wall (s) | Turns | Tool calls | Files mod. | Clarifications | Cost (USD) | Exit |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for m in measurements:
         lines.append(
-            f"| {m.task} | {m.arm} | {m.wall_seconds:.1f} | {m.files_modified} | "
-            f"{m.clarification_count} | {m.token_cost} | {m.exit_status} |"
+            f"| {m.task} | {m.arm} | {m.wall_seconds:.1f} | {m.num_turns} | "
+            f"{m.tool_call_count} | {m.files_modified} | {m.clarification_count} | "
+            f"${m.cost_usd:.4f} | {m.exit_status} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def render_summary(measurements: list[Measurement]) -> str:
+    """Per-arm averages across all tasks."""
+    by_arm: dict[str, list[Measurement]] = {}
+    for m in measurements:
+        by_arm.setdefault(m.arm, []).append(m)
+    lines = [
+        "",
+        "## Per-arm averages",
+        "",
+        "| Arm | Wall avg (s) | Turns avg | Tool calls avg | Files mod. total | Clarifications total | Cost total (USD) |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for arm in sorted(by_arm):
+        cells = by_arm[arm]
+        n = len(cells)
+        wall_avg = sum(c.wall_seconds for c in cells) / n
+        turns_avg = sum(c.num_turns for c in cells) / n
+        tools_avg = sum(c.tool_call_count for c in cells) / n
+        files_total = sum(c.files_modified for c in cells)
+        clar_total = sum(c.clarification_count for c in cells)
+        cost_total = sum(c.cost_usd for c in cells)
+        lines.append(
+            f"| {arm} | {wall_avg:.1f} | {turns_avg:.1f} | {tools_avg:.1f} | "
+            f"{files_total} | {clar_total} | ${cost_total:.4f} |"
         )
     return "\n".join(lines) + "\n"
 
@@ -103,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     measurements = measure(args.results_dir)
-    table = render_scorecard(measurements)
+    table = render_scorecard(measurements) + render_summary(measurements)
     if args.out:
         args.out.write_text(table, encoding="utf-8")
         print(f"scorecard written to {args.out}")

@@ -10,59 +10,81 @@ from measure import measure, parse_jsonl, render_scorecard  # noqa: E402
 def test_parse_jsonl_counts_questions(tmp_path: Path):
     log = tmp_path / "session.jsonl"
     events = [
-        {"type": "assistant", "message": {"content": [{"text": "Done."}]}},
-        {"type": "assistant", "message": {"content": [{"text": "Should I also rename the file?"}]}},
-        {"type": "assistant", "message": {"content": [{"text": "Working on it"}]}},
+        {
+            "type": "assistant",
+            "uuid": "u1",
+            "message": {"content": [{"type": "text", "text": "Done."}]},
+        },
+        {
+            "type": "assistant",
+            "uuid": "u2",
+            "message": {"content": [{"type": "text", "text": "Should I also rename the file?"}]},
+        },
+        {
+            "type": "assistant",
+            "uuid": "u3",
+            "message": {"content": [{"type": "text", "text": "Working on it"}]},
+        },
+        {
+            "type": "result",
+            "total_cost_usd": 0.42,
+            "num_turns": 4,
+        },
     ]
     log.write_text("\n".join(json.dumps(e) for e in events))
 
-    clarifications, tokens = parse_jsonl(log)
+    clarifications, tool_calls, cost, turns = parse_jsonl(log)
 
     assert clarifications == 1
-    assert tokens == 0
+    assert tool_calls == 0
+    assert cost == 0.42
+    assert turns == 4
 
 
-def test_parse_jsonl_sums_tokens(tmp_path: Path):
+def test_parse_jsonl_counts_tool_calls(tmp_path: Path):
     log = tmp_path / "session.jsonl"
     events = [
         {
             "type": "assistant",
-            "message": {"content": [], "usage": {"input_tokens": 100, "output_tokens": 50}},
+            "uuid": "u1",
+            "message": {
+                "content": [
+                    {"type": "tool_use", "name": "Edit"},
+                    {"type": "text", "text": "applying the edit"},
+                ]
+            },
         },
         {
             "type": "assistant",
-            "message": {"content": [], "usage": {"input_tokens": 30, "output_tokens": 10}},
+            "uuid": "u2",
+            "message": {"content": [{"type": "tool_use", "name": "Bash"}]},
         },
+        {"type": "result", "total_cost_usd": 0.1, "num_turns": 2},
     ]
     log.write_text("\n".join(json.dumps(e) for e in events))
 
-    _, tokens = parse_jsonl(log)
+    _, tool_calls, _, _ = parse_jsonl(log)
 
-    assert tokens == 190
+    assert tool_calls == 2
+
+
+def test_parse_jsonl_handles_missing_result(tmp_path: Path):
+    log = tmp_path / "session.jsonl"
+    log.write_text(json.dumps({"type": "user", "message": {}}) + "\n")
+
+    clarifications, tool_calls, cost, turns = parse_jsonl(log)
+
+    assert clarifications == 0
+    assert tool_calls == 0
+    assert cost == 0.0
+    assert turns == 0
 
 
 def test_measure_assembles_summary(tmp_path: Path):
-    log = tmp_path / "task_001_A_111.jsonl"
-    log.write_text(
-        json.dumps({"type": "assistant", "message": {"content": [{"text": "Done."}]}}) + "\n"
-    )
-
-    summary = [
-        {
-            "task": "task_001_demo",
-            "arm": "A",
-            "wall_seconds": 12.5,
-            "files_modified": 3,
-            "exit_status": 0,
-            "log_path": log.name,
-        }
-    ]
-    (tmp_path / "summary.json").write_text(json.dumps(summary))
-    # measure() resolves log_path relative to results_dir.parent.parent — so we set up the
-    # caller's expectation: results_dir is `tmp_path`, parent.parent is two above. Use a
-    # nested layout to match.
     nested = tmp_path / "evals" / "results" / "_local"
     nested.mkdir(parents=True)
+    log = nested / "task_001_A_111.jsonl"
+    log.write_text(json.dumps({"type": "result", "total_cost_usd": 0.5, "num_turns": 7}) + "\n")
     (nested / "summary.json").write_text(
         json.dumps(
             [
@@ -77,22 +99,36 @@ def test_measure_assembles_summary(tmp_path: Path):
             ]
         )
     )
-    (nested / log.name).write_text(
-        json.dumps({"type": "assistant", "message": {"content": [{"text": "Done."}]}}) + "\n"
-    )
 
     measurements = measure(nested)
 
     assert len(measurements) == 1
-    assert measurements[0].task == "task_001_demo"
-    assert measurements[0].arm == "A"
-    assert measurements[0].wall_seconds == 12.5
+    m = measurements[0]
+    assert m.task == "task_001_demo"
+    assert m.arm == "A"
+    assert m.wall_seconds == 12.5
+    assert m.files_modified == 3
+    assert m.cost_usd == 0.5
+    assert m.num_turns == 7
 
 
 def test_render_scorecard_table_shape():
     from measure import Measurement
 
-    rows = [Measurement("task_001_demo", "A", 10.0, 2, 0, 1234, 0)]
+    rows = [
+        Measurement(
+            task="task_001_demo",
+            arm="A",
+            wall_seconds=10.0,
+            files_modified=2,
+            clarification_count=0,
+            tool_call_count=5,
+            cost_usd=0.1234,
+            num_turns=4,
+            exit_status=0,
+        )
+    ]
     table = render_scorecard(rows)
-    assert "| Task | Arm | Wall (s) | Files mod. | Clarifications | Tokens | Exit |" in table
+    assert "| Task | Arm | Wall (s) | Turns |" in table
     assert "task_001_demo" in table
+    assert "$0.1234" in table
