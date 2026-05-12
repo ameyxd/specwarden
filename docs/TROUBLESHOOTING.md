@@ -38,7 +38,7 @@ pip install -e '.[dev]' --force-reinstall --no-deps
 Or bypass `.pth` processing entirely by setting `PYTHONPATH`:
 
 ```bash
-export PYTHONPATH=/path/to/spectrace/src
+export PYTHONPATH=/path/to/specwarden/src
 specwarden --help
 ```
 
@@ -53,7 +53,7 @@ If you installed from a local checkout in editable mode via pipx:
 
 ```bash
 pipx uninstall specwarden
-pipx install -e /path/to/spectrace
+pipx install -e /path/to/specwarden
 ```
 
 Check which `specwarden` binary is on your PATH:
