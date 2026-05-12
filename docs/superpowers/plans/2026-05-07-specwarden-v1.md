@@ -92,7 +92,7 @@ Goal: a working Python project skeleton with tests passing, lint clean, CI green
 - [ ] **Step 1: Initialize the repo**
 
 ```bash
-cd /Users/amey/Documents/projects/spectrace
+cd /Users/amey/Documents/projects/specwarden
 git init -b main
 git add CLAUDE.md SPEC_specwarden.md .gitignore
 git commit -m "chore: initial commit with spec and standing notes"
