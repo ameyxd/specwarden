@@ -56,3 +56,4 @@ evals/.cache/
 .env
 .env.*
 !.env.example
+!.env.*.example

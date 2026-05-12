@@ -26,6 +26,27 @@ SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "spec-trace"
 SRC_DIR = REPO_ROOT / "src"
 
 
+def _load_env_eval() -> None:
+    """Load `.env.eval` (gitignored) into os.environ if present.
+
+    Used to supply ANTHROPIC_API_KEY without exposing it in shell history
+    or requiring an interactive export. Lines are KEY=VALUE; blank lines
+    and `#` comments are ignored.
+    """
+    env_file = REPO_ROOT / ".env.eval"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
 def _subprocess_env() -> dict[str, str]:
     """Env that guarantees spec_trace is importable from any subprocess.
 
@@ -33,6 +54,7 @@ def _subprocess_env() -> dict[str, str]:
     .pth file is sometimes not processed. Prepending src/ to PYTHONPATH
     makes `python -m spec_trace.<X>` work regardless of install state.
     """
+    _load_env_eval()
     env = os.environ.copy()
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = f"{SRC_DIR}{os.pathsep}{existing}" if existing else str(SRC_DIR)
@@ -79,8 +101,41 @@ def setup_workdir(fixture: Path, arm: str) -> Path:
     return workdir
 
 
+def _claude_args(workdir: Path, arm: str) -> list[str]:
+    """Build the claude invocation for a given arm.
+
+    All arms run with --bare to isolate the eval from the host's global config
+    (no superpowers, no auto-discovered CLAUDE.md, no other skills). We grant
+    full tool access because the workdir is an ephemeral temp directory.
+
+    Arm-specific surface:
+    - A (control): bare claude only.
+    - B (advisory): skill description appended to the system prompt; no hooks.
+    - C (enforced): skill description AND the workdir's .claude/settings.json,
+      which wires PreToolUse / PostToolUse / SessionStart to the spec-trace hooks.
+    """
+    args = [
+        "claude",
+        "-p",
+        "--bare",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--dangerously-skip-permissions",
+        "--add-dir",
+        str(workdir),
+    ]
+    skill_md = workdir / ".claude" / "skills" / "spec-trace" / "SKILL.md"
+    if arm in ("B", "C") and skill_md.exists():
+        args.extend(["--append-system-prompt-file", str(skill_md)])
+    settings = workdir / ".claude" / "settings.json"
+    if arm == "C" and settings.exists():
+        args.extend(["--settings", str(settings)])
+    return args
+
+
 def run_claude(
-    workdir: Path, prompt_path: Path, log_path: Path, dry_run: bool
+    workdir: Path, prompt_path: Path, log_path: Path, arm: str, dry_run: bool
 ) -> tuple[float, int]:
     if dry_run:
         print(f"[dry-run] would invoke claude in {workdir} with prompt {prompt_path}")
@@ -88,7 +143,7 @@ def run_claude(
     prompt_text = prompt_path.read_text(encoding="utf-8")
     start = time.monotonic()
     proc = subprocess.run(
-        ["claude", "-p", "--output-format", "stream-json", "--verbose"],
+        _claude_args(workdir, arm),
         input=prompt_text,
         capture_output=True,
         text=True,
@@ -115,9 +170,9 @@ def files_modified(workdir: Path) -> int:
 
 def run_one(fixture: Path, arm: str, out_dir: Path, dry_run: bool) -> RunResult:
     workdir = setup_workdir(fixture, arm)
-    log_path = out_dir / f"{fixture.name}_{arm}_{int(time.time())}.jsonl"
+    log_path = (out_dir / f"{fixture.name}_{arm}_{int(time.time())}.jsonl").resolve()
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    elapsed, exit_status = run_claude(workdir, fixture / "prompt.md", log_path, dry_run)
+    elapsed, exit_status = run_claude(workdir, fixture / "prompt.md", log_path, arm, dry_run)
     return RunResult(
         task=fixture.name,
         arm=arm,
@@ -137,6 +192,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "evals" / "results" / "_local")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    args.out = args.out.resolve()
 
     arms = ["A", "B", "C"] if args.all_arms else [args.arm] if args.arm else None
     if not arms:
@@ -175,7 +231,11 @@ def main(argv: list[str] | None = None) -> int:
                     "wall_seconds": r.wall_seconds,
                     "files_modified": r.files_modified,
                     "exit_status": r.exit_status,
-                    "log_path": str(r.log_path.relative_to(REPO_ROOT)),
+                    "log_path": (
+                        str(r.log_path.relative_to(REPO_ROOT))
+                        if r.log_path.is_relative_to(REPO_ROOT)
+                        else str(r.log_path)
+                    ),
                 }
                 for r in results
             ],
