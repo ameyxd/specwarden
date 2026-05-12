@@ -136,20 +136,15 @@ Pulled from the [project spec](SPEC_specwarden.md) and the [philosophy doc](docs
 
 | | Advisory text | Edit enforcement | Decisions log | Coverage report | Portable |
 |---|:---:|:---:|:---:|:---:|:---:|
-| [github/spec-kit](https://github.com/github/spec-kit) | yes (templates) | no (its README states: *no file-blocking mechanism*) | no | no | many agent hosts |
+| [github/spec-kit](https://github.com/github/spec-kit) | yes (templates) | no | no | no | many agent hosts |
 | Karpathy CLAUDE.md | yes | no | no | no | any host |
 | Cursor `.cursorrules` | yes | no | no | no | Cursor only |
 | MCP server | — | no | no | no | yes |
 | specwarden | yes | yes | yes | yes | Claude Code + |
 
-specwarden is **complementary to [github/spec-kit](https://github.com/github/spec-kit)**, not a replacement.
-spec-kit ships methodology and templates (constitution → specify → plan → tasks → implement) and uses
-prompt-level guidance; specwarden ships filesystem hooks that physically block edits when no spec is
-active. **Use spec-kit's templates to write the spec; install specwarden to make sure Claude can't
-ignore them.** The two share no surface area — one runs at prompt-construction time, the other at
-tool-use time.
-
-Long-form comparison with tradeoffs: [docs/COMPARISONS.md](docs/COMPARISONS.md).
+specwarden is complementary to spec-kit: use spec-kit's templates to write the spec, install
+specwarden so the hook layer enforces it during editing. Long-form comparison with tradeoffs:
+[docs/COMPARISONS.md](docs/COMPARISONS.md).
 
 ## FAQ
 
