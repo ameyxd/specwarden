@@ -63,3 +63,8 @@ evals/.cache/
 .env.*
 !.env.example
 !.env.*.example
+
+# Launch-prep notes (personal; not part of public repo)
+.claude/GIF_RECORDING.md
+.claude/launch.md
+.claude/medium-post.md
