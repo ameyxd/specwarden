@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from spec_trace.decisions import DecisionEntry, append_decision
-from spec_trace.paths import RepoPaths
+from specwarden.decisions import DecisionEntry, append_decision
+from specwarden.paths import RepoPaths
 
 
 def fixed_now() -> datetime:

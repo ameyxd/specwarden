@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Eval runner for spec-trace's three-arm benchmark.
+"""Eval runner for specwarden's three-arm benchmark.
 
 Usage examples:
     python evals/run_eval.py --task 1 --arm A
@@ -22,7 +22,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "evals" / "fixtures"
-SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "spec-trace"
+SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "specwarden"
 SRC_DIR = REPO_ROOT / "src"
 
 
@@ -48,11 +48,11 @@ def _load_env_eval() -> None:
 
 
 def _subprocess_env() -> dict[str, str]:
-    """Env that guarantees spec_trace is importable from any subprocess.
+    """Env that guarantees specwarden is importable from any subprocess.
 
     Works around a Python 3.14 + hatchling editable-install quirk where the
     .pth file is sometimes not processed. Prepending src/ to PYTHONPATH
-    makes `python -m spec_trace.<X>` work regardless of install state.
+    makes `python -m specwarden.<X>` work regardless of install state.
     """
     _load_env_eval()
     env = os.environ.copy()
@@ -76,24 +76,24 @@ def discover_tasks() -> list[Path]:
 
 
 def setup_workdir(fixture: Path, arm: str) -> Path:
-    workdir = Path(tempfile.mkdtemp(prefix=f"spec_trace_eval_{fixture.name}_{arm}_"))
+    workdir = Path(tempfile.mkdtemp(prefix=f"specwarden_eval_{fixture.name}_{arm}_"))
     with tarfile.open(fixture / "starting_state.tar.gz") as tar:
         tar.extractall(workdir)
     subprocess.run(["git", "init", "-q", "-b", "main"], cwd=workdir, check=True)
     subprocess.run(
-        ["git", "config", "user.email", "eval@spec-trace.local"], cwd=workdir, check=True
+        ["git", "config", "user.email", "eval@specwarden.local"], cwd=workdir, check=True
     )
     subprocess.run(["git", "config", "user.name", "eval"], cwd=workdir, check=True)
     subprocess.run(["git", "add", "."], cwd=workdir, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "starting state"], cwd=workdir, check=True)
 
     if arm in ("B", "C"):
-        skill_dest = workdir / ".claude" / "skills" / "spec-trace"
+        skill_dest = workdir / ".claude" / "skills" / "specwarden"
         skill_dest.mkdir(parents=True, exist_ok=True)
         shutil.copytree(SKILL_DIR, skill_dest, dirs_exist_ok=True)
     if arm == "C":
         subprocess.run(
-            [sys.executable, "-m", "spec_trace.cli", "init", "--root", str(workdir)],
+            [sys.executable, "-m", "specwarden.cli", "init", "--root", str(workdir)],
             check=True,
             env=_subprocess_env(),
         )
@@ -112,7 +112,7 @@ def _claude_args(workdir: Path, arm: str) -> list[str]:
     - A (control): bare claude only.
     - B (advisory): skill description appended to the system prompt; no hooks.
     - C (enforced): skill description AND the workdir's .claude/settings.json,
-      which wires PreToolUse / PostToolUse / SessionStart to the spec-trace hooks.
+      which wires PreToolUse / PostToolUse / SessionStart to the specwarden hooks.
     """
     args = [
         "claude",
@@ -125,7 +125,7 @@ def _claude_args(workdir: Path, arm: str) -> list[str]:
         "--add-dir",
         str(workdir),
     ]
-    skill_md = workdir / ".claude" / "skills" / "spec-trace" / "SKILL.md"
+    skill_md = workdir / ".claude" / "skills" / "specwarden" / "SKILL.md"
     if arm in ("B", "C") and skill_md.exists():
         args.extend(["--append-system-prompt-file", str(skill_md)])
     settings = workdir / ".claude" / "settings.json"
@@ -184,7 +184,7 @@ def run_one(fixture: Path, arm: str, out_dir: Path, dry_run: bool) -> RunResult:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run the spec-trace three-arm benchmark.")
+    parser = argparse.ArgumentParser(description="Run the specwarden three-arm benchmark.")
     parser.add_argument("--arm", choices=["A", "B", "C"])
     parser.add_argument("--all-arms", action="store_true")
     parser.add_argument("--task", type=int)

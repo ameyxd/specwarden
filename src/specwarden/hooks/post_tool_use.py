@@ -1,4 +1,4 @@
-"""spec-trace PostToolUse hook. Self-contained — stdlib only."""
+"""specwarden PostToolUse hook. Self-contained — stdlib only."""
 
 from __future__ import annotations
 

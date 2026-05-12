@@ -1,11 +1,11 @@
-# Releasing spec-trace
+# Releasing specwarden
 
 ## One-time setup
 
 1. Configure PyPI Trusted Publishing for this project at
    https://pypi.org/manage/account/publishing/. Use:
    - Owner: `<github-org-or-user>`
-   - Repository: `spec-trace`
+   - Repository: `specwarden`
    - Workflow: `release.yml`
    - Environment: `pypi`
 2. Create the `pypi` GitHub Environment under
@@ -14,7 +14,7 @@
 ## Cutting a release
 
 1. Bump `version` in `pyproject.toml`.
-2. Update `src/spec_trace/__init__.py`'s `__version__` to match.
+2. Update `src/specwarden/__init__.py`'s `__version__` to match.
 3. Commit on `main`:
    ```bash
    git commit -am "chore: release 0.1.1"
@@ -42,10 +42,10 @@ it from `pip install`), then publish a new patch version with the fix.
 ## Smoke test after release
 
 ```bash
-pipx install spec-trace==0.1.1
+pipx install specwarden==0.1.1
 cd /tmp && mkdir test && cd test && git init -q
-spec-trace init
-spec-trace new "Smoke test" --author you
+specwarden init
+specwarden new "Smoke test" --author you
 ```
 
 If those commands run, the published wheel is intact.

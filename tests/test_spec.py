@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from spec_trace.paths import RepoPaths
-from spec_trace.spec import (
+from specwarden.paths import RepoPaths
+from specwarden.spec import (
     NoActiveSpec,
     SpecAlreadyExists,
     SpecError,

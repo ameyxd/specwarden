@@ -1,11 +1,11 @@
-# spec-trace 🪨
+# specwarden 🪨
 
 Every code change traces back to a written spec. Enforced by hooks, not vibes.
 
 ![demo](docs/assets/demo.gif)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/ameyxd/spec-trace/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ameyxd/specwarden/main/install.sh)
 ```
 
 ---
@@ -20,7 +20,7 @@ proposed behavioral rules as the cure. Rules work until the agent ignores them.
 
 ## The fix in 30 seconds
 
-A typical session with spec-trace active:
+A typical session with specwarden active:
 
 ```
 You:    add JWT auth to the Flask API
@@ -65,7 +65,7 @@ No edits land until the spec exists. Every edit that does land is logged.
 ## Benchmark numbers
 
 Across five fixture tasks, arm A (vanilla Claude Code) modified **8 files** in
-total. With spec-trace in context, arm B (skill only) and arm C (skill + hooks)
+total. With specwarden in context, arm B (skill only) and arm C (skill + hooks)
 modified **2 and 1 files** respectively — a 75–87% reduction in out-of-scope
 file modifications.
 
@@ -83,29 +83,29 @@ Reproduce with `make eval` (~15 min, ~$3.50 in API tokens).
 
 **macOS / Linux / WSL:**
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/ameyxd/spec-trace/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ameyxd/specwarden/main/install.sh)
 ```
 
 **Windows PowerShell:**
 ```powershell
-irm https://raw.githubusercontent.com/ameyxd/spec-trace/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ameyxd/specwarden/main/install.ps1 | iex
 ```
 
-Both installers run `pipx install spec-trace` and `spec-trace init` in the
+Both installers run `pipx install specwarden` and `specwarden init` in the
 current directory. If you prefer to do it manually:
 
 ```bash
-pipx install spec-trace
+pipx install specwarden
 cd your-repo
-spec-trace init      # creates .claude/specs/, wires hooks into .claude/settings.json
+specwarden init      # creates .claude/specs/, wires hooks into .claude/settings.json
 ```
 
 **Create your first spec:**
 ```bash
-spec-trace new "add jwt auth"
+specwarden new "add jwt auth"
 # opens .claude/specs/2026-05-06_add-jwt-auth.md in $EDITOR
 # fill in the four sections, then:
-spec-trace activate 2026-05-06_add-jwt-auth
+specwarden activate 2026-05-06_add-jwt-auth
 ```
 
 Now open Claude Code. The PreToolUse hook is live; no edit lands until the spec
@@ -121,9 +121,9 @@ Removing the skill leaves enforcement intact; removing the hooks leaves advisory
 guidance intact; the CLI manages the `.claude/specs/active` file that both read.
 Full detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What spec-trace is not
+## What specwarden is not
 
-Pulled from the [project spec](SPEC_spec-trace.md) and the [philosophy doc](docs/PHILOSOPHY.md):
+Pulled from the [project spec](SPEC_specwarden.md) and the [philosophy doc](docs/PHILOSOPHY.md):
 
 - Not a project management tool. No assignees, priorities, due dates, or status boards.
 - Not a multi-user collaboration tool. Single-developer workflow only in v1.
@@ -136,10 +136,18 @@ Pulled from the [project spec](SPEC_spec-trace.md) and the [philosophy doc](docs
 
 | | Advisory text | Edit enforcement | Decisions log | Coverage report | Portable |
 |---|:---:|:---:|:---:|:---:|:---:|
+| [github/spec-kit](https://github.com/github/spec-kit) | yes (templates) | no (its README states: *no file-blocking mechanism*) | no | no | many agent hosts |
 | Karpathy CLAUDE.md | yes | no | no | no | any host |
 | Cursor `.cursorrules` | yes | no | no | no | Cursor only |
 | MCP server | — | no | no | no | yes |
-| spec-trace | yes | yes | yes | yes | Claude Code + |
+| specwarden | yes | yes | yes | yes | Claude Code + |
+
+specwarden is **complementary to [github/spec-kit](https://github.com/github/spec-kit)**, not a replacement.
+spec-kit ships methodology and templates (constitution → specify → plan → tasks → implement) and uses
+prompt-level guidance; specwarden ships filesystem hooks that physically block edits when no spec is
+active. **Use spec-kit's templates to write the spec; install specwarden to make sure Claude can't
+ignore them.** The two share no surface area — one runs at prompt-construction time, the other at
+tool-use time.
 
 Long-form comparison with tradeoffs: [docs/COMPARISONS.md](docs/COMPARISONS.md).
 
@@ -150,12 +158,12 @@ It adds one step — writing a four-section spec — before code lands. That ste
 is roughly three to five minutes for a focused change. The bet is that surfacing
 assumptions and scope before editing saves more time in review and debugging than
 the spec took to write. For cases where it genuinely is overhead (typo fix,
-dependency bump), set `SPEC_TRACE_QUICKFIX=1` to bypass the check.
+dependency bump), set `SPECWARDEN_QUICKFIX=1` to bypass the check.
 
 **What about quick fixes?**
-`SPEC_TRACE_QUICKFIX=1 claude` skips the PreToolUse check entirely. The
+`SPECWARDEN_QUICKFIX=1 claude` skips the PreToolUse check entirely. The
 decisions log is not populated and the commit will appear as uncovered in
-`spec-trace coverage` output. Use it for edits where a spec would be absurd;
+`specwarden coverage` output. Use it for edits where a spec would be absurd;
 accept the uncovered commit.
 
 **Why not just use GitHub Issues?**

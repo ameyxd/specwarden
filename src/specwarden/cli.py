@@ -22,7 +22,7 @@ SETTINGS_TEMPLATE = {
             {
                 "matcher": "Edit|Write|MultiEdit|NotebookEdit",
                 "hooks": [
-                    {"type": "command", "command": "python -m spec_trace.hooks.pre_tool_use"}
+                    {"type": "command", "command": "python -m specwarden.hooks.pre_tool_use"}
                 ],
             }
         ],
@@ -30,17 +30,17 @@ SETTINGS_TEMPLATE = {
             {
                 "matcher": "Edit|Write|MultiEdit|NotebookEdit",
                 "hooks": [
-                    {"type": "command", "command": "python -m spec_trace.hooks.post_tool_use"}
+                    {"type": "command", "command": "python -m specwarden.hooks.post_tool_use"}
                 ],
             }
         ],
         "SessionStart": [
-            {"hooks": [{"type": "command", "command": "python -m spec_trace.hooks.session_start"}]}
+            {"hooks": [{"type": "command", "command": "python -m specwarden.hooks.session_start"}]}
         ],
     }
 }
 
-app = typer.Typer(add_completion=False, help="spec-trace: spec-first discipline, with teeth.")
+app = typer.Typer(add_completion=False, help="specwarden: spec-first discipline, with teeth.")
 
 ROOT_OPTION = typer.Option(None, "--root", help="Repo root (defaults to current directory).")
 
@@ -108,7 +108,7 @@ def status(root: Path | None = ROOT_OPTION) -> None:
     paths = RepoPaths(_resolve_root(root))
     spec_id = paths.active_spec_id()
     if spec_id is None:
-        typer.echo("no active spec — run `spec-trace new <title>` to start.")
+        typer.echo("no active spec — run `specwarden new <title>` to start.")
         return
     typer.echo(f"active: {spec_id}")
 
@@ -168,7 +168,7 @@ def git_hook_install(root: Path | None = ROOT_OPTION) -> None:
 
 @git_hook_app.command("uninstall")
 def git_hook_uninstall(root: Path | None = ROOT_OPTION) -> None:
-    """Uninstall the prepare-commit-msg hook (if installed by spec-trace)."""
+    """Uninstall the prepare-commit-msg hook (if installed by specwarden)."""
     from .git_hook import uninstall_hook
 
     uninstall_hook(_resolve_root(root))

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from spec_trace.trace import TraceResult, trace_commit
+from specwarden.trace import TraceResult, trace_commit
 
 
 def _git(repo: Path, *args: str) -> str:

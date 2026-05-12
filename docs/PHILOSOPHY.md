@@ -1,6 +1,6 @@
 # Philosophy
 
-spec-trace exists because the discipline most engineers want from AI agents — write the spec before touching the code — is easy to say and hard to enforce. This document explains the problem, the design choices, and the explicit limits of what spec-trace does.
+specwarden exists because the discipline most engineers want from AI agents — write the spec before touching the code — is easy to say and hard to enforce. This document explains the problem, the design choices, and the explicit limits of what specwarden does.
 
 ## The pain points it addresses
 
@@ -42,24 +42,24 @@ The template is opinionated on purpose. Engineers complain about it for the firs
 
 ## The "one template, period" choice
 
-spec-trace ships one spec template and will not add per-language variants. This is a deliberate constraint, not an oversight.
+specwarden ships one spec template and will not add per-language variants. This is a deliberate constraint, not an oversight.
 
 Per-language templates introduce a maintenance surface that grows with every new language added. More importantly, the discipline the template enforces is language-agnostic: assumptions, scope, non-goals, success criteria matter equally for a Python refactor and a Go microservice. Adding a "Python template" that drops Non-goals or rephrases Assumptions as "dependencies" weakens the discipline by making it optional to think about those sections.
 
 If a specific project needs additional context in every spec — say, a database migration template for a service with a managed schema — the right approach is to document that in the project's own `CLAUDE.md` and have engineers include a migration-specific section as part of their scope or assumptions. The core four-section structure stays intact.
 
-## What spec-trace is not
+## What specwarden is not
 
 These are not oversights. They are explicit non-goals from the project spec, documented here to prevent future scope creep.
 
 **Not a project management tool.** Specs are not Jira tickets. There are no assignees, priorities, due dates, labels, or status boards. A spec is a one-page document that answers: what are we building, why, and how will we know it's done. Project tracking is a different problem.
 
-**Not a team collaboration tool.** spec-trace targets single-developer workflows in v1. Multi-user features — spec ownership, review workflows, shared coverage dashboards — are out of scope.
+**Not a team collaboration tool.** specwarden targets single-developer workflows in v1. Multi-user features — spec ownership, review workflows, shared coverage dashboards — are out of scope.
 
 **Not a spec generator.** The CLI creates a spec file from a template, but it does not fill in the content. The human fills in the four sections. Auto-generating specs defeats the purpose: the forcing function is that a human has to think through assumptions, scope, non-goals, and success criteria before any code lands. If an agent generates the spec, that thinking is skipped.
 
 **Not an integration layer.** No integration with GitHub Issues, Linear, Jira, or other trackers. Specs live in `.claude/specs/` as markdown files in git. "Files in git" is the answer to "how do I sync this across machines" and "how do I review this with my team."
 
-**Not a migration tool.** spec-trace does not offer to import existing Cursor `.cursorrules` files or existing `CLAUDE.md` behavioral rules. The migration path is: write a spec for the next piece of work you are about to start.
+**Not a migration tool.** specwarden does not offer to import existing Cursor `.cursorrules` files or existing `CLAUDE.md` behavioral rules. The migration path is: write a spec for the next piece of work you are about to start.
 
 For comparisons with adjacent tools that do some of these things, see `docs/COMPARISONS.md`.

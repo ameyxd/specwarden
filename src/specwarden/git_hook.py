@@ -9,7 +9,7 @@ from pathlib import Path
 # regex metacharacters that might appear in future spec ID formats.
 HOOK_SCRIPT = """\
 #!/usr/bin/env bash
-# managed-by: spec-trace
+# managed-by: specwarden
 set -e
 COMMIT_MSG_FILE="$1"
 ACTIVE_FILE="$(git rev-parse --show-toplevel)/.claude/specs/active"
@@ -21,7 +21,7 @@ if [ -f "$ACTIVE_FILE" ]; then
 fi
 """
 
-MANAGED_MARKER = "# managed-by: spec-trace"
+MANAGED_MARKER = "# managed-by: specwarden"
 
 
 def _hook_path(repo: Path) -> Path:
@@ -35,7 +35,7 @@ def install_hook(repo: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and MANAGED_MARKER not in path.read_text(encoding="utf-8"):
         raise RuntimeError(
-            "prepare-commit-msg hook already exists and was not installed by spec-trace; "
+            "prepare-commit-msg hook already exists and was not installed by specwarden; "
             "remove it manually or merge by hand."
         )
     path.write_text(HOOK_SCRIPT, encoding="utf-8")

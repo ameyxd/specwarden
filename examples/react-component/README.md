@@ -1,7 +1,7 @@
-# Example: React component with spec-trace
+# Example: React component with specwarden
 
 This example shows what a small frontend repo looks like after a UI feature
-has been authored under spec-trace. The feature is a "Reset" button added to
+has been authored under specwarden. The feature is a "Reset" button added to
 a stateful Counter component.
 
 ## What to look at, in order
@@ -25,4 +25,4 @@ npm test
 
 In a real repo you would also see commits with a `Spec: 2026-05-08_add-reset-button`
 trailer; git history is omitted here to keep the example focused on the
-artifacts spec-trace produces.
+artifacts specwarden produces.

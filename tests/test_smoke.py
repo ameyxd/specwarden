@@ -1,6 +1,6 @@
 import re
 
-from spec_trace import __version__
+from specwarden import __version__
 
 
 def test_version_is_semver_shaped():

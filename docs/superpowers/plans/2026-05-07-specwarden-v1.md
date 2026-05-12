@@ -1,18 +1,18 @@
-# spec-trace v1 implementation plan
+# specwarden v1 implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship spec-trace v1 — a Claude Code skill, three lifecycle hooks, and a Python CLI that gate filesystem edits behind a written spec, plus a reproducible three-arm eval, install scripts, examples, and a launch-ready README.
+**Goal:** Ship specwarden v1 — a Claude Code skill, three lifecycle hooks, and a Python CLI that gate filesystem edits behind a written spec, plus a reproducible three-arm eval, install scripts, examples, and a launch-ready README.
 
 **Architecture:** Three loosely coupled pieces sharing one synchronization point.
-1. A Python CLI (`spec-trace`, packaged as `pipx install spec-trace`) handles spec creation, activation, coverage reporting, and lineage tracing.
+1. A Python CLI (`specwarden`, packaged as `pipx install specwarden`) handles spec creation, activation, coverage reporting, and lineage tracing.
 2. Three hook scripts (`pre_tool_use.py`, `post_tool_use.py`, `session_start.py`) read the active-spec marker and append to a structured decisions log.
 3. A `SKILL.md` exposes four slash commands (`/spec`, `/trace`, `/coverage`, `/spec-help`) that delegate to the CLI.
 The synchronization point is a single-line file at `.claude/specs/active`. Spec coverage on commits is detected via a `Spec: <id>` trailer added by an optional `prepare-commit-msg` git hook.
 
 **Tech Stack:** Python 3.10+, Typer (CLI), pytest (tests), ruff (lint + format), Bash + PowerShell installers, GitHub Actions (CI + release).
 
-**Source of truth for v1 scope:** `SPEC_spec-trace.md` at the repo root. If this plan disagrees with the SPEC, the SPEC wins; raise the conflict before deviating.
+**Source of truth for v1 scope:** `SPEC_specwarden.md` at the repo root. If this plan disagrees with the SPEC, the SPEC wins; raise the conflict before deviating.
 
 ---
 
@@ -20,7 +20,7 @@ The synchronization point is a single-line file at `.claude/specs/active`. Spec 
 
 These are the files this plan creates or modifies. Each one has a single responsibility.
 
-### Package source (`src/spec_trace/`)
+### Package source (`src/specwarden/`)
 
 | File | Responsibility |
 | --- | --- |
@@ -41,9 +41,9 @@ These are the files this plan creates or modifies. Each one has a single respons
 | `post_tool_use.py` | Reads stdin JSON + the pending entry; appends a finalized record to the decisions log. |
 | `session_start.py` | Prints the active spec (if any) at session start; otherwise prints a reminder. |
 
-These scripts must be self-contained — they may not import `spec_trace` because the user repo may not have it installed. Duplicate the small amount of path/IO logic they need.
+These scripts must be self-contained — they may not import `specwarden` because the user repo may not have it installed. Duplicate the small amount of path/IO logic they need.
 
-### Skill artifact (`.claude/skills/spec-trace/`)
+### Skill artifact (`.claude/skills/specwarden/`)
 
 | File | Responsibility |
 | --- | --- |
@@ -80,7 +80,7 @@ Mirror the source layout: `tests/test_paths.py`, `tests/test_spec.py`, etc.
 
 ## Phase 0 — Bootstrap
 
-Goal: a working Python project skeleton with tests passing, lint clean, CI green. No spec-trace logic yet.
+Goal: a working Python project skeleton with tests passing, lint clean, CI green. No specwarden logic yet.
 
 ### Task 0.1: Initialize git and write `pyproject.toml`
 
@@ -94,7 +94,7 @@ Goal: a working Python project skeleton with tests passing, lint clean, CI green
 ```bash
 cd /Users/amey/Documents/projects/spectrace
 git init -b main
-git add CLAUDE.md SPEC_spec-trace.md .gitignore
+git add CLAUDE.md SPEC_specwarden.md .gitignore
 git commit -m "chore: initial commit with spec and standing notes"
 ```
 
@@ -106,7 +106,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "spec-trace"
+name = "specwarden"
 version = "0.1.0"
 description = "Force a written spec before any code change. Logs every edit with a backlink."
 readme = "README.md"
@@ -125,10 +125,10 @@ dev = [
 ]
 
 [project.scripts]
-spec-trace = "spec_trace.cli:app"
+specwarden = "specwarden.cli:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/spec_trace"]
+packages = ["src/specwarden"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -150,12 +150,12 @@ quote-style = "double"
 - [ ] **Step 3: Write a placeholder `README.md` so `pyproject.toml` builds**
 
 ```markdown
-# spec-trace
+# specwarden
 
 Force a written spec before any code change. Logs every edit with a backlink.
 
 This README is a placeholder. The launch-ready README lands in Phase 11.
-See `SPEC_spec-trace.md` for the full v1 scope.
+See `SPEC_specwarden.md` for the full v1 scope.
 ```
 
 - [ ] **Step 4: Add MIT `LICENSE`**
@@ -188,7 +188,7 @@ eval:
 - [ ] **Step 6: Verify the build succeeds**
 
 Run: `pip install -e '.[dev]'`
-Expected: install completes, `spec-trace --help` runs (and currently fails because `cli.py` does not exist yet — that's fine, we wire it in Phase 4; for now confirm `pip install` itself succeeds).
+Expected: install completes, `specwarden --help` runs (and currently fails because `cli.py` does not exist yet — that's fine, we wire it in Phase 4; for now confirm `pip install` itself succeeds).
 
 - [ ] **Step 7: Commit**
 
@@ -197,18 +197,18 @@ git add pyproject.toml LICENSE Makefile README.md
 git commit -m "chore: bootstrap python package metadata"
 ```
 
-### Task 0.2: Scaffold `src/spec_trace/` and `tests/`
+### Task 0.2: Scaffold `src/specwarden/` and `tests/`
 
 **Files:**
-- Create: `src/spec_trace/__init__.py`
+- Create: `src/specwarden/__init__.py`
 - Create: `tests/__init__.py`
 - Create: `tests/test_smoke.py`
 
 - [ ] **Step 1: Create the package**
 
 ```python
-# src/spec_trace/__init__.py
-"""spec-trace: spec-first discipline for Claude Code, with teeth."""
+# src/specwarden/__init__.py
+"""specwarden: spec-first discipline for Claude Code, with teeth."""
 
 __version__ = "0.1.0"
 ```
@@ -225,7 +225,7 @@ __version__ = "0.1.0"
 
 ```python
 # tests/test_smoke.py
-from spec_trace import __version__
+from specwarden import __version__
 
 
 def test_version_is_a_string():
@@ -281,7 +281,7 @@ jobs:
       - run: pip install -e '.[dev]'
       - run: ruff check .
       - run: ruff format --check .
-      - run: pytest --cov=spec_trace --cov-report=term-missing
+      - run: pytest --cov=specwarden --cov-report=term-missing
 ```
 
 - [ ] **Step 2: Commit**
@@ -295,12 +295,12 @@ git commit -m "ci: add lint + test matrix"
 
 ## Phase 1 — CLI: spec lifecycle
 
-Goal: `spec-trace init`, `new`, `activate`, `done` work end-to-end against the filesystem. No git, no commit trailers yet.
+Goal: `specwarden init`, `new`, `activate`, `done` work end-to-end against the filesystem. No git, no commit trailers yet.
 
 ### Task 1.1: `paths.py` — resolve `.claude/` layout
 
 **Files:**
-- Create: `src/spec_trace/paths.py`
+- Create: `src/specwarden/paths.py`
 - Create: `tests/test_paths.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -309,7 +309,7 @@ Goal: `spec-trace init`, `new`, `activate`, `done` work end-to-end against the f
 # tests/test_paths.py
 from pathlib import Path
 
-from spec_trace.paths import RepoPaths
+from specwarden.paths import RepoPaths
 
 
 def test_repo_paths_under_root(tmp_path: Path):
@@ -347,7 +347,7 @@ Expected: ImportError on `RepoPaths`.
 - [ ] **Step 3: Implement `paths.py`**
 
 ```python
-# src/spec_trace/paths.py
+# src/specwarden/paths.py
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -395,14 +395,14 @@ Expected: 4 passed.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/spec_trace/paths.py tests/test_paths.py
+git add src/specwarden/paths.py tests/test_paths.py
 git commit -m "feat: add RepoPaths to resolve .claude/ layout"
 ```
 
 ### Task 1.2: `spec.py` — create + activate
 
 **Files:**
-- Create: `src/spec_trace/spec.py`
+- Create: `src/specwarden/spec.py`
 - Create: `tests/test_spec.py`
 
 The spec ID format is `YYYY-MM-DD_<slug>`. Slugs are lowercased, spaces become hyphens, only `[a-z0-9-]` survive. Date comes from a callable so tests can pin it.
@@ -416,8 +416,8 @@ from pathlib import Path
 
 import pytest
 
-from spec_trace.paths import RepoPaths
-from spec_trace.spec import (
+from specwarden.paths import RepoPaths
+from specwarden.spec import (
     SpecAlreadyExists,
     SpecNotFound,
     activate_spec,
@@ -497,7 +497,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement `spec.py`**
 
 ```python
-# src/spec_trace/spec.py
+# src/specwarden/spec.py
 from __future__ import annotations
 
 import re
@@ -607,14 +607,14 @@ Expected: 6 passed.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/spec_trace/spec.py tests/test_spec.py
+git add src/specwarden/spec.py tests/test_spec.py
 git commit -m "feat: spec creation, activation, and deactivation"
 ```
 
 ### Task 1.3: `spec.py` — `mark_done` flips status to completed
 
 **Files:**
-- Modify: `src/spec_trace/spec.py`
+- Modify: `src/specwarden/spec.py`
 - Modify: `tests/test_spec.py`
 
 - [ ] **Step 1: Add the failing test**
@@ -626,7 +626,7 @@ def test_mark_done_flips_status_and_clears_marker(tmp_path: Path):
     spec_id = create_spec(paths, "demo", author="A", today=fixed_date)
     activate_spec(paths, spec_id)
 
-    from spec_trace.spec import mark_done
+    from specwarden.spec import mark_done
 
     mark_done(paths)
 
@@ -677,7 +677,7 @@ Goal: a structured, append-only log per spec.
 ### Task 2.1: `decisions.py`
 
 **Files:**
-- Create: `src/spec_trace/decisions.py`
+- Create: `src/specwarden/decisions.py`
 - Create: `tests/test_decisions.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -687,8 +687,8 @@ Goal: a structured, append-only log per spec.
 from datetime import datetime, timezone
 from pathlib import Path
 
-from spec_trace.decisions import DecisionEntry, append_decision
-from spec_trace.paths import RepoPaths
+from specwarden.decisions import DecisionEntry, append_decision
+from specwarden.paths import RepoPaths
 
 
 def fixed_now() -> datetime:
@@ -739,7 +739,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement `decisions.py`**
 
 ```python
-# src/spec_trace/decisions.py
+# src/specwarden/decisions.py
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -793,7 +793,7 @@ Expected: 2 passed.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/spec_trace/decisions.py tests/test_decisions.py
+git add src/specwarden/decisions.py tests/test_decisions.py
 git commit -m "feat: append-only decisions log per spec"
 ```
 
@@ -806,7 +806,7 @@ Goal: read git history and report which commits were authorized by a spec, and w
 ### Task 3.1: `coverage.py` — parse `Spec:` trailers
 
 **Files:**
-- Create: `src/spec_trace/coverage.py`
+- Create: `src/specwarden/coverage.py`
 - Create: `tests/test_coverage.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -820,7 +820,7 @@ from pathlib import Path
 
 import pytest
 
-from spec_trace.coverage import CoverageReport, compute_coverage
+from specwarden.coverage import CoverageReport, compute_coverage
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -868,7 +868,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement `coverage.py`**
 
 ```python
-# src/spec_trace/coverage.py
+# src/specwarden/coverage.py
 from __future__ import annotations
 
 import re
@@ -928,14 +928,14 @@ Expected: 2 passed.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/spec_trace/coverage.py tests/test_coverage.py
+git add src/specwarden/coverage.py tests/test_coverage.py
 git commit -m "feat: spec coverage via Spec: trailer in git log"
 ```
 
 ### Task 3.2: `trace.py` — commit → spec → decisions
 
 **Files:**
-- Create: `src/spec_trace/trace.py`
+- Create: `src/specwarden/trace.py`
 - Create: `tests/test_trace.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -947,7 +947,7 @@ from pathlib import Path
 
 import pytest
 
-from spec_trace.trace import TraceResult, trace_commit
+from specwarden.trace import TraceResult, trace_commit
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -1003,7 +1003,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement `trace.py`**
 
 ```python
-# src/spec_trace/trace.py
+# src/specwarden/trace.py
 from __future__ import annotations
 
 import re
@@ -1055,7 +1055,7 @@ Expected: 2 passed.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/spec_trace/trace.py tests/test_trace.py
+git add src/specwarden/trace.py tests/test_trace.py
 git commit -m "feat: trace_commit walks commit -> spec -> decisions"
 ```
 
@@ -1063,12 +1063,12 @@ git commit -m "feat: trace_commit walks commit -> spec -> decisions"
 
 ## Phase 4 — Typer CLI
 
-Goal: a working `spec-trace` binary that exposes the lifecycle.
+Goal: a working `specwarden` binary that exposes the lifecycle.
 
 ### Task 4.1: `cli.py` — wire it together
 
 **Files:**
-- Create: `src/spec_trace/cli.py`
+- Create: `src/specwarden/cli.py`
 - Create: `tests/test_cli.py`
 
 The CLI uses Typer's `CliRunner` for testing.
@@ -1082,7 +1082,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from spec_trace.cli import app
+from specwarden.cli import app
 
 
 @pytest.fixture
@@ -1129,7 +1129,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement `cli.py`**
 
 ```python
-# src/spec_trace/cli.py
+# src/specwarden/cli.py
 from __future__ import annotations
 
 from pathlib import Path
@@ -1149,7 +1149,7 @@ from .spec import (
 )
 from .trace import trace_commit
 
-app = typer.Typer(add_completion=False, help="spec-trace: spec-first discipline, with teeth.")
+app = typer.Typer(add_completion=False, help="specwarden: spec-first discipline, with teeth.")
 
 
 def _root_option() -> Path:
@@ -1210,7 +1210,7 @@ def status(root: Path = _root_option()) -> None:
     paths = RepoPaths(root)
     spec_id = paths.active_spec_id()
     if spec_id is None:
-        typer.echo("no active spec — run `spec-trace new <title>` to start.")
+        typer.echo("no active spec — run `specwarden new <title>` to start.")
         return
     typer.echo(f"active: {spec_id}")
 
@@ -1260,8 +1260,8 @@ Expected: 3 passed.
 - [ ] **Step 5: Smoke-test the binary**
 
 ```bash
-spec-trace --help
-spec-trace version
+specwarden --help
+specwarden version
 ```
 
 Expected: help output, then `0.1.0`.
@@ -1269,7 +1269,7 @@ Expected: help output, then `0.1.0`.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/spec_trace/cli.py tests/test_cli.py
+git add src/specwarden/cli.py tests/test_cli.py
 git commit -m "feat: typer CLI with init, new, activate, done, status, coverage, trace"
 ```
 
@@ -1282,15 +1282,15 @@ Goal: when a spec is active, every commit gets a `Spec: <id>` trailer added auto
 ### Task 5.1: `git_hook.py` — install / uninstall
 
 **Files:**
-- Create: `src/spec_trace/git_hook.py`
+- Create: `src/specwarden/git_hook.py`
 - Create: `tests/test_git_hook.py`
-- Modify: `src/spec_trace/cli.py` — add `git-hook install` / `git-hook uninstall` subcommands.
+- Modify: `src/specwarden/cli.py` — add `git-hook install` / `git-hook uninstall` subcommands.
 
 The hook is a small bash script:
 
 ```bash
 #!/usr/bin/env bash
-# managed-by: spec-trace
+# managed-by: specwarden
 set -e
 COMMIT_MSG_FILE="$1"
 ACTIVE_FILE="$(git rev-parse --show-toplevel)/.claude/specs/active"
@@ -1313,7 +1313,7 @@ from pathlib import Path
 
 import pytest
 
-from spec_trace.git_hook import install_hook, uninstall_hook
+from specwarden.git_hook import install_hook, uninstall_hook
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -1385,7 +1385,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement `git_hook.py`**
 
 ```python
-# src/spec_trace/git_hook.py
+# src/specwarden/git_hook.py
 from __future__ import annotations
 
 import os
@@ -1394,7 +1394,7 @@ from pathlib import Path
 
 HOOK_SCRIPT = """\
 #!/usr/bin/env bash
-# managed-by: spec-trace
+# managed-by: specwarden
 set -e
 COMMIT_MSG_FILE="$1"
 ACTIVE_FILE="$(git rev-parse --show-toplevel)/.claude/specs/active"
@@ -1406,7 +1406,7 @@ if [ -f "$ACTIVE_FILE" ]; then
 fi
 """
 
-MANAGED_MARKER = "# managed-by: spec-trace"
+MANAGED_MARKER = "# managed-by: specwarden"
 
 
 def _hook_path(repo: Path) -> Path:
@@ -1418,7 +1418,7 @@ def install_hook(repo: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and MANAGED_MARKER not in path.read_text(encoding="utf-8"):
         raise RuntimeError(
-            "prepare-commit-msg hook already exists and was not installed by spec-trace; "
+            "prepare-commit-msg hook already exists and was not installed by specwarden; "
             "remove it manually or merge by hand."
         )
     path.write_text(HOOK_SCRIPT, encoding="utf-8")
@@ -1466,7 +1466,7 @@ def git_hook_uninstall(root: Path = _root_option()) -> None:
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/spec_trace/git_hook.py tests/test_git_hook.py src/spec_trace/cli.py
+git add src/specwarden/git_hook.py tests/test_git_hook.py src/specwarden/cli.py
 git commit -m "feat: prepare-commit-msg hook auto-adds Spec: trailer"
 ```
 
@@ -1474,7 +1474,7 @@ git commit -m "feat: prepare-commit-msg hook auto-adds Spec: trailer"
 
 ## Phase 6 — Claude Code lifecycle hooks
 
-Goal: three standalone scripts in `hooks/` that the user repo's `.claude/settings.json` can point to. They must not depend on `spec_trace` being installed.
+Goal: three standalone scripts in `hooks/` that the user repo's `.claude/settings.json` can point to. They must not depend on `specwarden` being installed.
 
 ### Task 6.1: `pre_tool_use.py`
 
@@ -1487,7 +1487,7 @@ Behavior:
 - If `tool_name` not in `{"Edit", "Write"}`, return `{"permissionDecision": "allow"}` and exit 0.
 - Else, read `<repo>/.claude/specs/active`. If empty/missing, return `{"permissionDecision": "ask", "message": "..."}` and exit 0.
 - If active, return allow.
-- Quick-fix mode: if env var `SPEC_TRACE_QUICKFIX=1`, allow regardless.
+- Quick-fix mode: if env var `SPECWARDEN_QUICKFIX=1`, allow regardless.
 
 - [ ] **Step 1: Write failing tests**
 
@@ -1522,7 +1522,7 @@ def test_edit_with_no_active_spec_is_asked(tmp_path: Path):
     (tmp_path / ".claude" / "specs").mkdir(parents=True)
     out = _run({"tool_name": "Edit"}, cwd=tmp_path)
     assert out["permissionDecision"] == "ask"
-    assert "spec-trace" in out["message"].lower()
+    assert "specwarden" in out["message"].lower()
 
 
 def test_edit_with_active_spec_is_allowed(tmp_path: Path):
@@ -1536,7 +1536,7 @@ def test_quickfix_env_overrides(tmp_path: Path, monkeypatch):
     (tmp_path / ".claude" / "specs").mkdir(parents=True)
     import os
     env = os.environ.copy()
-    env["SPEC_TRACE_QUICKFIX"] = "1"
+    env["SPECWARDEN_QUICKFIX"] = "1"
     out = _run({"tool_name": "Write"}, cwd=tmp_path, env=env)
     assert out["permissionDecision"] == "allow"
 ```
@@ -1550,7 +1550,7 @@ Expected: FileNotFoundError on the hook.
 
 ```python
 #!/usr/bin/env python3
-"""spec-trace PreToolUse hook. Self-contained — no external imports."""
+"""specwarden PreToolUse hook. Self-contained — no external imports."""
 from __future__ import annotations
 
 import json
@@ -1576,7 +1576,7 @@ def main() -> int:
         print(json.dumps({"permissionDecision": "allow"}))
         return 0
 
-    if os.environ.get("SPEC_TRACE_QUICKFIX") == "1":
+    if os.environ.get("SPECWARDEN_QUICKFIX") == "1":
         print(json.dumps({"permissionDecision": "allow"}))
         return 0
 
@@ -1587,7 +1587,7 @@ def main() -> int:
                 {
                     "permissionDecision": "ask",
                     "message": (
-                        "spec-trace: no active spec. Run `/spec <slug>` first to define "
+                        "specwarden: no active spec. Run `/spec <slug>` first to define "
                         "what you're building before editing files."
                     ),
                 }
@@ -1685,7 +1685,7 @@ Expected: FileNotFoundError.
 
 ```python
 #!/usr/bin/env python3
-"""spec-trace PostToolUse hook. Self-contained."""
+"""specwarden PostToolUse hook. Self-contained."""
 from __future__ import annotations
 
 import json
@@ -1798,7 +1798,7 @@ def _run(cwd: Path) -> str:
 
 def test_no_active_prints_reminder(tmp_path: Path):
     out = _run(tmp_path)
-    assert "spec-trace" in out.lower()
+    assert "specwarden" in out.lower()
     assert "no active spec" in out.lower()
 
 
@@ -1817,14 +1817,14 @@ Run: `pytest tests/test_session_start.py -v`
 
 ```python
 #!/usr/bin/env python3
-"""spec-trace SessionStart hook."""
+"""specwarden SessionStart hook."""
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
 REMINDER = (
-    "spec-trace: no active spec. Run `/spec <slug>` to define what you're building.\n"
+    "specwarden: no active spec. Run `/spec <slug>` to define what you're building.\n"
     "  Spec template sections: Assumptions, Scope, Non-goals, Success criteria.\n"
 )
 
@@ -1833,7 +1833,7 @@ def main() -> int:
     repo = Path.cwd()
     marker = repo / ".claude" / "specs" / "active"
     if marker.exists() and marker.read_text(encoding="utf-8").strip():
-        sys.stdout.write(f"spec-trace: active spec is {marker.read_text(encoding='utf-8').strip()}\n")
+        sys.stdout.write(f"specwarden: active spec is {marker.read_text(encoding='utf-8').strip()}\n")
         return 0
     sys.stdout.write(REMINDER)
     return 0
@@ -1857,10 +1857,10 @@ git add hooks/session_start.py tests/test_session_start.py
 git commit -m "feat: SessionStart hook surfaces active spec"
 ```
 
-### Task 6.4: `spec-trace init` installs hooks into `.claude/settings.json`
+### Task 6.4: `specwarden init` installs hooks into `.claude/settings.json`
 
 **Files:**
-- Modify: `src/spec_trace/cli.py` — make `init` also write a `.claude/settings.json` snippet that wires the three hooks.
+- Modify: `src/specwarden/cli.py` — make `init` also write a `.claude/settings.json` snippet that wires the three hooks.
 - Modify: `tests/test_cli.py`.
 
 - [ ] **Step 1: Add a failing test**
@@ -1877,11 +1877,11 @@ def test_init_writes_settings_with_hooks(runner: CliRunner, tmp_path: Path):
 
 - [ ] **Step 2: Implement settings writer**
 
-In `cli.py`, the `init` command should additionally copy or write a `settings.json` that points at the hooks directory. Since the hooks live inside this project, when the CLI is installed the user has to run `spec-trace init --hooks-dir /path/to/hooks`. Default to a path resolved off the package install (use `importlib.resources` once we ship them as package data — leave as a follow-up note).
+In `cli.py`, the `init` command should additionally copy or write a `settings.json` that points at the hooks directory. Since the hooks live inside this project, when the CLI is installed the user has to run `specwarden init --hooks-dir /path/to/hooks`. Default to a path resolved off the package install (use `importlib.resources` once we ship them as package data — leave as a follow-up note).
 
-For v1 simplicity: `init` writes a settings.json that uses `python -m spec_trace.hooks.pre_tool_use`, and we move the hooks under `src/spec_trace/hooks/` so they ship in the wheel. Update Phase 6 tasks 6.1-6.3 to put the hooks under `src/spec_trace/hooks/` instead of top-level `hooks/`.
+For v1 simplicity: `init` writes a settings.json that uses `python -m specwarden.hooks.pre_tool_use`, and we move the hooks under `src/specwarden/hooks/` so they ship in the wheel. Update Phase 6 tasks 6.1-6.3 to put the hooks under `src/specwarden/hooks/` instead of top-level `hooks/`.
 
-> **Decision recorded here:** hooks live at `src/spec_trace/hooks/{pre_tool_use,post_tool_use,session_start}.py` and are invoked via `python -m spec_trace.hooks.<name>`. Update the test paths in Tasks 6.1–6.3 accordingly when executing.
+> **Decision recorded here:** hooks live at `src/specwarden/hooks/{pre_tool_use,post_tool_use,session_start}.py` and are invoked via `python -m specwarden.hooks.<name>`. Update the test paths in Tasks 6.1–6.3 accordingly when executing.
 
 - [ ] **Step 3: Tests pass, commit**
 
@@ -1893,18 +1893,18 @@ git commit -am "feat: init writes .claude/settings.json that wires hooks"
 
 ## Phase 7 — SKILL.md and slash commands
 
-Goal: the published skill at `.claude/skills/spec-trace/` exposes four slash commands that delegate to the CLI.
+Goal: the published skill at `.claude/skills/specwarden/` exposes four slash commands that delegate to the CLI.
 
 ### Task 7.1: SKILL.md
 
 **Files:**
-- Create: `.claude/skills/spec-trace/SKILL.md`
+- Create: `.claude/skills/specwarden/SKILL.md`
 
 The frontmatter follows the standard skill format:
 
 ```yaml
 ---
-name: spec-trace
+name: specwarden
 description: Use when starting any non-trivial code change in this repo — refuses Edit/Write until a one-page spec is written; logs every accepted edit with a backlink. Activates on `/spec`, `/trace`, `/coverage`, `/spec-help`.
 ---
 ```
@@ -1922,34 +1922,34 @@ Body sections (each ~10–20 lines):
 - [ ] **Step 2: Commit.**
 
 ```bash
-git add .claude/skills/spec-trace/SKILL.md
+git add .claude/skills/specwarden/SKILL.md
 git commit -m "feat: SKILL.md with four slash commands and template"
 ```
 
 ### Task 7.2: Slash command shims
 
 **Files:**
-- Create: `.claude/skills/spec-trace/scripts/new_spec.py`
-- Create: `.claude/skills/spec-trace/scripts/activate_spec.py`
-- Create: `.claude/skills/spec-trace/scripts/coverage.py`
-- Create: `.claude/skills/spec-trace/scripts/trace.py`
+- Create: `.claude/skills/specwarden/scripts/new_spec.py`
+- Create: `.claude/skills/specwarden/scripts/activate_spec.py`
+- Create: `.claude/skills/specwarden/scripts/coverage.py`
+- Create: `.claude/skills/specwarden/scripts/trace.py`
 
-Each shim is ~10 lines: parse args, shell out to `spec-trace <subcommand> ...`, stream output.
+Each shim is ~10 lines: parse args, shell out to `specwarden <subcommand> ...`, stream output.
 
-- [ ] **Step 1: Write the four shims and a test that each one calls `spec-trace` with the right argv.** Use `unittest.mock.patch` on `subprocess.run`.
+- [ ] **Step 1: Write the four shims and a test that each one calls `specwarden` with the right argv.** Use `unittest.mock.patch` on `subprocess.run`.
 
 - [ ] **Step 2: Commit.**
 
 ```bash
-git add .claude/skills/spec-trace/scripts tests/test_skill_shims.py
+git add .claude/skills/specwarden/scripts tests/test_skill_shims.py
 git commit -m "feat: slash command shims delegate to CLI"
 ```
 
 ### Task 7.3: Templates
 
 **Files:**
-- Create: `.claude/skills/spec-trace/templates/spec.md.template`
-- Create: `.claude/skills/spec-trace/templates/decision_entry.md.template`
+- Create: `.claude/skills/specwarden/templates/spec.md.template`
+- Create: `.claude/skills/specwarden/templates/decision_entry.md.template`
 
 The spec template is the SPEC's "Spec template" section verbatim. The decision entry template is the block from `decisions.py`.
 
@@ -1969,8 +1969,8 @@ Goal: one-liner install for macOS, Linux, WSL, and Windows.
 Behavior:
 1. Detect OS, abort if not macOS/Linux/WSL.
 2. Verify `python3 --version` >= 3.10 and `pipx --version` exist; if not, instruct.
-3. `pipx install spec-trace`.
-4. Print next-step: `spec-trace init` inside a repo.
+3. `pipx install specwarden`.
+4. Print next-step: `specwarden init` inside a repo.
 
 - [ ] **Step 1: Write `install.sh` (~40 lines).**
 - [ ] **Step 2: Test on macOS** (manually, in a fresh shell).
@@ -2006,7 +2006,7 @@ Each fixture:
 - `prompt.md`: the exact text the user types to Claude Code.
 - `expected.md`: a reviewer's notes — what a correct change looks like.
 
-The five tasks are listed in `SPEC_spec-trace.md` "Evaluation methodology". Use those.
+The five tasks are listed in `SPEC_specwarden.md` "Evaluation methodology". Use those.
 
 - [ ] **Step 1: Curate task_001 (Flask + JWT auth).** Build the starting repo by hand. Verify the prompt produces a reasonable response in the control arm.
 - [ ] **Step 2–5: Same for tasks 002–005.**
@@ -2116,7 +2116,7 @@ Triggers on tag push (no `v` prefix). Builds wheel + sdist with `hatch build`, u
 
 ### Task 11.4: Definition of done audit
 
-Walk through every checkbox in `SPEC_spec-trace.md` "Definition of done for v1". Confirm each one. If anything fails, file the gap and fix.
+Walk through every checkbox in `SPEC_specwarden.md` "Definition of done for v1". Confirm each one. If anything fails, file the gap and fix.
 
 - [ ] **Step 1: Audit, fix gaps, then ship.**
 
@@ -2151,7 +2151,7 @@ No SPEC requirement is uncovered.
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-05-07-spec-trace-v1.md`. Two execution options:
+Plan complete and saved to `docs/superpowers/plans/2026-05-07-specwarden-v1.md`. Two execution options:
 
 1. **Subagent-Driven (recommended)** — fresh subagent per task, review between tasks, fast iteration.
 2. **Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints.

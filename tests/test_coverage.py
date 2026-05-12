@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from spec_trace.coverage import CoverageReport, compute_coverage
+from specwarden.coverage import CoverageReport, compute_coverage
 
 
 def _git(repo: Path, *args: str) -> str:

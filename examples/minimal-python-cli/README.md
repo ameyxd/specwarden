@@ -1,7 +1,7 @@
-# Example: minimal Python CLI with spec-trace
+# Example: minimal Python CLI with specwarden
 
 This example shows what a small repo looks like after a feature has been
-authored under spec-trace. The feature is a `--utc` flag for the `now`
+authored under specwarden. The feature is a `--utc` flag for the `now`
 subcommand of a Click-based date utility.
 
 ## What to look at, in order
@@ -27,4 +27,4 @@ python cli.py parse 2026-01-15T09:30:00
 
 In a real repo you would also see commits with a `Spec: 2026-05-08_add-utc-flag`
 trailer; git history is omitted here to keep the example focused on the
-artifacts spec-trace produces.
+artifacts specwarden produces.

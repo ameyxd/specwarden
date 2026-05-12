@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from spec_trace.cli import app
+from specwarden.cli import app
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ def test_init_writes_settings_with_hooks(runner: CliRunner, tmp_path: Path):
 
     pre = settings["hooks"]["PreToolUse"][0]
     assert pre["matcher"] == "Edit|Write|MultiEdit|NotebookEdit"
-    assert pre["hooks"][0]["command"] == "python -m spec_trace.hooks.pre_tool_use"
+    assert pre["hooks"][0]["command"] == "python -m specwarden.hooks.pre_tool_use"
 
 
 def test_init_preserves_existing_settings(runner: CliRunner, tmp_path: Path):

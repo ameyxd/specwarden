@@ -1,29 +1,29 @@
-# spec-trace — working notes
+# specwarden — working notes
 
 This file is the standing context for anyone (human or agent) working on this repo.
 Read it before touching code. Update it when conventions change.
 
 ## What we are building
 
-`spec-trace` is a Claude Code skill plus a set of lifecycle hooks that gate
+`specwarden` is a Claude Code skill plus a set of lifecycle hooks that gate
 filesystem edits behind a written spec. It also ships a Python CLI and an
-eval suite. The full requirements live in `SPEC_spec-trace.md` at the repo
+eval suite. The full requirements live in `SPEC_specwarden.md` at the repo
 root — that file is the single source of truth for v1 scope.
 
-If anything here drifts from `SPEC_spec-trace.md`, the SPEC wins.
+If anything here drifts from `SPEC_specwarden.md`, the SPEC wins.
 
 ## Working directories
 
 | Path | Purpose |
 | --- | --- |
-| `SPEC_spec-trace.md` | Authoritative spec for v1. Treat as read-only unless the user changes scope. |
-| `docs/superpowers/plans/` | Implementation plan(s). The active one is `2026-05-07-spec-trace-v1.md`. |
-| `.claude/skills/spec-trace/` | The published skill artifact (SKILL.md, scripts, templates). Ships with the package. |
+| `SPEC_specwarden.md` | Authoritative spec for v1. Treat as read-only unless the user changes scope. |
+| `docs/superpowers/plans/` | Implementation plan(s). The active one is `2026-05-07-specwarden-v1.md`. |
+| `.claude/skills/specwarden/` | The published skill artifact (SKILL.md, scripts, templates). Ships with the package. |
 | `.claude/internal/` | Tracking notes for this build. Gitignored. Worklog, project context, feature specs go here. |
-| `src/spec_trace/` | Python CLI package. `pipx install spec-trace` installs the entry point. |
-| `hooks/` | Standalone hook scripts copied into the user repo by `spec-trace init`. |
+| `src/specwarden/` | Python CLI package. `pipx install specwarden` installs the entry point. |
+| `hooks/` | Standalone hook scripts copied into the user repo by `specwarden init`. |
 | `evals/` | Three-arm benchmark. Fixtures, runner, results. |
-| `examples/` | Reference projects that show spec-trace in use. |
+| `examples/` | Reference projects that show specwarden in use. |
 | `docs/` | Public-facing markdown docs. |
 
 ## Conventions
@@ -97,7 +97,7 @@ tracker integrations, no per-language templates.
 
 ## Where to write progress
 
-- Plan progress: tick boxes in `docs/superpowers/plans/2026-05-07-spec-trace-v1.md`.
+- Plan progress: tick boxes in `docs/superpowers/plans/2026-05-07-specwarden-v1.md`.
 - Session log: `.claude/internal/WORKLOG.md` (append at end of each session).
 - Cross-session state: `.claude/internal/PROJECT_CONTEXT.md`.
 - Per-feature notes: `.claude/internal/FEATURE_SPECS.md`.

@@ -1,17 +1,17 @@
 ---
-name: spec-trace
+name: specwarden
 description: Use when starting any non-trivial code change in this repo — refuses Edit/Write until a one-page spec is written; logs every accepted edit with a backlink. Activates on `/spec`, `/trace`, `/coverage`, `/spec-help`.
 ---
 
-# spec-trace
+# specwarden
 
 > Every code change traces back to a written spec. Enforced by hooks, not vibes.
 
 ## What this does
 
-spec-trace enforces a spec-first discipline: before any Edit or Write tool call lands, a structured one-page spec must exist and be marked ready. The PreToolUse hook reads `.claude/specs/active` on every tool call; if no spec is active, the hook blocks the call and tells you why. This makes the discipline mechanical rather than voluntary.
+specwarden enforces a spec-first discipline: before any Edit or Write tool call lands, a structured one-page spec must exist and be marked ready. The PreToolUse hook reads `.claude/specs/active` on every tool call; if no spec is active, the hook blocks the call and tells you why. This makes the discipline mechanical rather than voluntary.
 
-Once a spec is active, every edit is logged to `.claude/decisions/<spec-id>.md` with a timestamp and a reference back to the spec. When you commit, a `Spec: <id>` trailer is appended automatically (requires `spec-trace git-hook install`). The result is a chain you can walk in either direction: from a commit to its spec, or from a spec to every file it touched.
+Once a spec is active, every edit is logged to `.claude/decisions/<spec-id>.md` with a timestamp and a reference back to the spec. When you commit, a `Spec: <id>` trailer is appended automatically (requires `specwarden git-hook install`). The result is a chain you can walk in either direction: from a commit to its spec, or from a spec to every file it touched.
 
 ## Slash commands
 
@@ -75,14 +75,14 @@ How we will know we are done. Must be checkable.
 2. You invoke `/spec <slug>` and fill in all four sections in conversation. Push back on vague assumptions, surface trade-offs, propose non-goals to prevent scope creep.
 3. User reviews the spec and types `ready`.
 4. You proceed to edit. Each edit is appended to `.claude/decisions/<spec-id>.md` with a timestamp.
-5. When the work is done, run `spec-trace done` from the terminal (or call the `mark_done` helper) to flip the spec status to `completed`.
-6. Commits made while the spec is active automatically carry a `Spec: <id>` trailer if `spec-trace git-hook install` was run beforehand.
+5. When the work is done, run `specwarden done` from the terminal (or call the `mark_done` helper) to flip the spec status to `completed`.
+6. Commits made while the spec is active automatically carry a `Spec: <id>` trailer if `specwarden git-hook install` was run beforehand.
 
 The spec is not a bureaucratic artifact — it is the conversation record that prevents you and the human from talking past each other mid-implementation. Write it as if someone will read it six months from now to understand why a particular decision was made.
 
 ## Quick-fix mode
 
-For edits where a full spec is genuine overhead — typo fixes, dependency version bumps, comment rewording — set `SPEC_TRACE_QUICKFIX=1` in the environment before invoking Claude Code. The PreToolUse hook will allow Edit and Write calls without an active spec. The decisions log will not capture the edit. Use sparingly; the coverage report will mark these commits as uncovered.
+For edits where a full spec is genuine overhead — typo fixes, dependency version bumps, comment rewording — set `SPECWARDEN_QUICKFIX=1` in the environment before invoking Claude Code. The PreToolUse hook will allow Edit and Write calls without an active spec. The decisions log will not capture the edit. Use sparingly; the coverage report will mark these commits as uncovered.
 
 ## Hook contract version
 
@@ -96,10 +96,10 @@ If the hook contract changes in a later Claude Code release, this skill must be 
 
 ## Files this skill writes
 
-- `.claude/specs/<spec-id>.md` — the spec document, created by `/spec` or `spec-trace new`.
+- `.claude/specs/<spec-id>.md` — the spec document, created by `/spec` or `specwarden new`.
 - `.claude/specs/active` — single line containing the currently active spec ID; read by the PreToolUse hook on every tool call.
 - `.claude/decisions/<spec-id>.md` — append-only log of every edit authorized under the spec.
-- `.claude/settings.json` — hook wiring; created once by `spec-trace init` and not modified again by the skill.
+- `.claude/settings.json` — hook wiring; created once by `specwarden init` and not modified again by the skill.
 
 ## Out of scope for v1
 

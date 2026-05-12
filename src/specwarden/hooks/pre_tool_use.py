@@ -1,4 +1,4 @@
-"""spec-trace PreToolUse hook. Self-contained — no internal imports."""
+"""specwarden PreToolUse hook. Self-contained — no internal imports."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def main() -> int:
         print(json.dumps({"permissionDecision": "allow"}))
         return 0
 
-    if os.environ.get("SPEC_TRACE_QUICKFIX") == "1":
+    if os.environ.get("SPECWARDEN_QUICKFIX") == "1":
         print(json.dumps({"permissionDecision": "allow"}))
         return 0
 
@@ -36,7 +36,7 @@ def main() -> int:
                 {
                     "permissionDecision": "ask",
                     "message": (
-                        "spec-trace: no active spec. Run `/spec <slug>` first to define "
+                        "specwarden: no active spec. Run `/spec <slug>` first to define "
                         "what you're building before editing files."
                     ),
                 }

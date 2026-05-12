@@ -9,7 +9,7 @@ def _run(payload: dict, cwd: Path) -> None:
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(Path(__file__).resolve().parents[1] / "src"))
     proc = subprocess.run(
-        [sys.executable, "-m", "spec_trace.hooks.post_tool_use"],
+        [sys.executable, "-m", "specwarden.hooks.post_tool_use"],
         input=json.dumps(payload),
         capture_output=True,
         text=True,

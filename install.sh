@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# spec-trace installer for macOS / Linux / WSL.
-# Usage: curl -fsSL https://raw.githubusercontent.com/<user>/spec-trace/main/install.sh | bash
+# specwarden installer for macOS / Linux / WSL.
+# Usage: curl -fsSL https://raw.githubusercontent.com/<user>/specwarden/main/install.sh | bash
 
 set -euo pipefail
 
@@ -8,7 +8,7 @@ OS="$(uname -s)"
 case "$OS" in
     Darwin|Linux) ;;
     *)
-        echo "spec-trace: install.sh only supports macOS, Linux, and WSL." >&2
+        echo "specwarden: install.sh only supports macOS, Linux, and WSL." >&2
         echo "Detected: $OS" >&2
         echo "For Windows, use install.ps1 instead." >&2
         exit 1
@@ -16,7 +16,7 @@ case "$OS" in
 esac
 
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "spec-trace: python3 is required but not found on PATH." >&2
+    echo "specwarden: python3 is required but not found on PATH." >&2
     echo "Install Python 3.10+ first." >&2
     exit 1
 fi
@@ -25,12 +25,12 @@ PYTHON_VERSION="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.
 PYTHON_MAJOR="${PYTHON_VERSION%.*}"
 PYTHON_MINOR="${PYTHON_VERSION#*.}"
 if [ "$PYTHON_MAJOR" -lt 3 ] || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]; }; then
-    echo "spec-trace: requires Python 3.10 or newer; found $PYTHON_VERSION." >&2
+    echo "specwarden: requires Python 3.10 or newer; found $PYTHON_VERSION." >&2
     exit 1
 fi
 
 if ! command -v pipx >/dev/null 2>&1; then
-    echo "spec-trace: pipx is required but not found." >&2
+    echo "specwarden: pipx is required but not found." >&2
     case "$OS" in
         Darwin)
             echo "  Install with: brew install pipx" >&2
@@ -43,16 +43,16 @@ if ! command -v pipx >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "Installing spec-trace via pipx..."
-pipx install spec-trace
+echo "Installing specwarden via pipx..."
+pipx install specwarden
 
 echo
-echo "spec-trace installed."
+echo "specwarden installed."
 echo
 echo "Next steps:"
 echo "  cd <your-repo>"
-echo "  spec-trace init                     # Wires .claude/settings.json + hooks"
-echo "  spec-trace git-hook install         # Installs prepare-commit-msg hook"
-echo "  spec-trace new <slug> --author <name>"
+echo "  specwarden init                     # Wires .claude/settings.json + hooks"
+echo "  specwarden git-hook install         # Installs prepare-commit-msg hook"
+echo "  specwarden new <slug> --author <name>"
 echo
-echo "See https://github.com/<user>/spec-trace for the full guide."
+echo "See https://github.com/<user>/specwarden for the full guide."

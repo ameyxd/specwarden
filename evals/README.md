@@ -4,7 +4,7 @@
 
 These fixtures let a benchmark runner extract a known starting state, hand it
 to a Claude Code session with a fixed prompt, and measure what happens. The
-goal is to quantify how spec-trace changes Claude Code's behaviour across a
+goal is to quantify how specwarden changes Claude Code's behaviour across a
 set of concrete, reproducible coding tasks.
 
 ## Structure
@@ -43,7 +43,7 @@ introduced via explicit flags.
 | C (enforced) | yes | yes (`PreToolUse`, `PostToolUse`, `SessionStart` from `.claude/settings.json`) | B's flags + `--settings <workdir>/.claude/settings.json` |
 
 Arm B isolates the contribution of *mere guidance* — does Claude behave
-better when it merely knows the spec-trace skill exists? Arm C measures
+better when it merely knows the specwarden skill exists? Arm C measures
 the contribution of mechanical enforcement (the PreToolUse hook blocks
 edits with no active spec; PostToolUse appends each accepted edit to the
 decisions log).

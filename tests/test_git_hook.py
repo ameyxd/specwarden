@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from spec_trace.git_hook import install_hook, uninstall_hook
+from specwarden.git_hook import install_hook, uninstall_hook
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -82,7 +82,7 @@ def test_install_is_idempotent_on_managed_hook(repo: Path):
     install_hook(repo)
     hook = repo / ".git" / "hooks" / "prepare-commit-msg"
     text = hook.read_text()
-    assert text.count("# managed-by: spec-trace") == 1
+    assert text.count("# managed-by: specwarden") == 1
 
 
 def test_install_rejects_non_git_repo(tmp_path: Path):

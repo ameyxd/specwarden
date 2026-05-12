@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Slash command shim for /spec — delegates to `spec-trace new`."""
+"""Slash command shim for /spec — delegates to `specwarden new`."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ def main(argv: list[str]) -> int:
         print("usage: /spec <slug>", file=sys.stderr)
         return 2
     title = " ".join(argv)
-    return subprocess.call(["spec-trace", "new", title, "--author", "claude"])
+    return subprocess.call(["specwarden", "new", title, "--author", "claude"])
 
 
 if __name__ == "__main__":

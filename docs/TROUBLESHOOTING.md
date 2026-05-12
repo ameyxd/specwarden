@@ -6,22 +6,22 @@ For hook JSON contracts and wiring details, see `docs/HOOKS.md`. For the overall
 
 ---
 
-## `spec-trace --help` reports `ModuleNotFoundError`
+## `specwarden --help` reports `ModuleNotFoundError`
 
 **Symptom:**
 
 ```
-$ spec-trace --help
+$ specwarden --help
 Traceback (most recent call last):
   ...
-ModuleNotFoundError: No module named 'spec_trace'
+ModuleNotFoundError: No module named 'specwarden'
 ```
 
-Or the `spec-trace` binary runs but immediately crashes before printing the help text.
+Or the `specwarden` binary runs but immediately crashes before printing the help text.
 
 **Cause:**
 
-pipx installs packages into an isolated virtual environment and adds the entry-point binary to `~/.local/bin`. The binary invokes the interpreter inside the isolated venv, so `spec_trace` should always be importable when run via the pipx entry point. This error typically means one of:
+pipx installs packages into an isolated virtual environment and adds the entry-point binary to `~/.local/bin`. The binary invokes the interpreter inside the isolated venv, so `specwarden` should always be importable when run via the pipx entry point. This error typically means one of:
 
 1. The package was installed with `pip install -e .` (editable install) rather than `pipx`, and the `.pth` file that editable installs write to `site-packages` is not being processed. This is more common on Python 3.14+ where `.pth` processing behavior changed.
 2. The `PYTHONPATH` in the environment is set to a value that shadows the package.
@@ -39,27 +39,27 @@ Or bypass `.pth` processing entirely by setting `PYTHONPATH`:
 
 ```bash
 export PYTHONPATH=/path/to/spectrace/src
-spec-trace --help
+specwarden --help
 ```
 
 If you used pipx:
 
 ```bash
-pipx uninstall spec-trace
-pipx install spec-trace
+pipx uninstall specwarden
+pipx install specwarden
 ```
 
 If you installed from a local checkout in editable mode via pipx:
 
 ```bash
-pipx uninstall spec-trace
+pipx uninstall specwarden
 pipx install -e /path/to/spectrace
 ```
 
-Check which `spec-trace` binary is on your PATH:
+Check which `specwarden` binary is on your PATH:
 
 ```bash
-which spec-trace
+which specwarden
 ```
 
 If it points somewhere unexpected (e.g., inside a venv that no longer exists), remove or fix that entry.
@@ -70,7 +70,7 @@ If it points somewhere unexpected (e.g., inside a venv that no longer exists), r
 
 **Symptom:**
 
-Claude Code makes `Edit` or `Write` calls without triggering the spec-trace gate. Edits go through even with no active spec. No `hook_started` events appear in the JSONL session log for PreToolUse.
+Claude Code makes `Edit` or `Write` calls without triggering the specwarden gate. Edits go through even with no active spec. No `hook_started` events appear in the JSONL session log for PreToolUse.
 
 **Cause A — matcher regex not matching tool name.**
 
@@ -87,7 +87,7 @@ Inspect `.claude/settings.json` and confirm the PreToolUse entry looks exactly l
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          {"type": "command", "command": "python -m spec_trace.hooks.pre_tool_use"}
+          {"type": "command", "command": "python -m specwarden.hooks.pre_tool_use"}
         ]
       }
     ]
@@ -95,11 +95,11 @@ Inspect `.claude/settings.json` and confirm the PreToolUse entry looks exactly l
 }
 ```
 
-Run `spec-trace init` again (it will not overwrite an existing file); if you have customized `settings.json`, merge the PreToolUse block by hand.
+Run `specwarden init` again (it will not overwrite an existing file); if you have customized `settings.json`, merge the PreToolUse block by hand.
 
-**Cause B — `python` on PATH does not resolve `spec_trace`.**
+**Cause B — `python` on PATH does not resolve `specwarden`.**
 
-The hook command is `python -m spec_trace.hooks.pre_tool_use`. Claude Code inherits the PATH and environment of the process that launched it. If `python` resolves to a system interpreter that does not have `spec_trace` installed, the hook command will fail or produce a `ModuleNotFoundError`, and Claude Code may silently allow the edit rather than surfacing the failure.
+The hook command is `python -m specwarden.hooks.pre_tool_use`. Claude Code inherits the PATH and environment of the process that launched it. If `python` resolves to a system interpreter that does not have `specwarden` installed, the hook command will fail or produce a `ModuleNotFoundError`, and Claude Code may silently allow the edit rather than surfacing the failure.
 
 **Fix B:**
 
@@ -107,13 +107,13 @@ Check which Python is on the PATH that Claude Code sees:
 
 ```bash
 which python
-python -c "import spec_trace; print(spec_trace.__file__)"
+python -c "import specwarden; print(specwarden.__file__)"
 ```
 
-If `spec_trace` is not importable, either install it into that Python environment or change the hook command in `settings.json` to use an absolute path to the interpreter:
+If `specwarden` is not importable, either install it into that Python environment or change the hook command in `settings.json` to use an absolute path to the interpreter:
 
 ```json
-{"type": "command", "command": "/home/alice/.local/pipx/venvs/spec-trace/bin/python -m spec_trace.hooks.pre_tool_use"}
+{"type": "command", "command": "/home/alice/.local/pipx/venvs/specwarden/bin/python -m specwarden.hooks.pre_tool_use"}
 ```
 
 **Cause C — wrong `settings.json` being loaded.**
@@ -138,12 +138,12 @@ Update to a 2.1.x release or later.
 
 ---
 
-## `spec-trace init` refuses to write `settings.json`
+## `specwarden init` refuses to write `settings.json`
 
 **Symptom:**
 
 ```
-$ spec-trace init
+$ specwarden init
 initialized: .claude/ (settings.json already exists; left alone)
 ```
 
@@ -151,7 +151,7 @@ The hook wiring is not present in the existing `settings.json`.
 
 **Cause:**
 
-`spec-trace init` will not overwrite an existing `settings.json`. This is by design: the file may contain other project-specific settings (MCP server configuration, other hook registrations) that would be lost by a blind overwrite.
+`specwarden init` will not overwrite an existing `settings.json`. This is by design: the file may contain other project-specific settings (MCP server configuration, other hook registrations) that would be lost by a blind overwrite.
 
 **Fix:**
 
@@ -161,7 +161,7 @@ If you want to start fresh and the existing `settings.json` has nothing you need
 
 ```bash
 rm .claude/settings.json
-spec-trace init
+specwarden init
 ```
 
 ---
@@ -170,11 +170,11 @@ spec-trace init
 
 **Symptom:**
 
-`spec-trace git-hook install` ran without error. Commits are being made while a spec is active. But `git log --format=%B HEAD` does not show a `Spec:` line.
+`specwarden git-hook install` ran without error. Commits are being made while a spec is active. But `git log --format=%B HEAD` does not show a `Spec:` line.
 
 **Cause A — `.claude/specs/active` absent or empty at commit time.**
 
-The hook reads `.claude/specs/active` at the moment `git commit` is invoked. If the spec was deactivated (by `spec-trace done` or by manually deleting the file) before committing, the trailer is not appended.
+The hook reads `.claude/specs/active` at the moment `git commit` is invoked. If the spec was deactivated (by `specwarden done` or by manually deleting the file) before committing, the trailer is not appended.
 
 **Fix A:**
 
@@ -185,13 +185,13 @@ cat .claude/specs/active
 If it is empty or missing, activate the spec before committing:
 
 ```bash
-spec-trace activate <spec-id>
+specwarden activate <spec-id>
 git commit --amend --no-edit    # amend the most recent commit to add the trailer
 ```
 
 **Cause B — hook file not executable.**
 
-`spec-trace git-hook install` sets executable bits, but if the file was copied or reset (e.g., by a `git checkout` on the hooks directory, or a tool that strips executable bits), the hook will not run.
+`specwarden git-hook install` sets executable bits, but if the file was copied or reset (e.g., by a `git checkout` on the hooks directory, or a tool that strips executable bits), the hook will not run.
 
 **Fix B:**
 
@@ -210,18 +210,18 @@ If the repository has a `core.hooksPath` configured (common in monorepos with sh
 git config core.hooksPath
 ```
 
-If it returns a non-default path, either install the spec-trace hook there:
+If it returns a non-default path, either install the specwarden hook there:
 
 ```bash
-spec-trace git-hook install --root /path/to/repo
+specwarden git-hook install --root /path/to/repo
 # then move .git/hooks/prepare-commit-msg to the configured hooksPath
 ```
 
-Or, if you control the hooks path, ensure `prepare-commit-msg` in that path contains (or sources) the spec-trace hook logic from `src/spec_trace/git_hook.py`.
+Or, if you control the hooks path, ensure `prepare-commit-msg` in that path contains (or sources) the specwarden hook logic from `src/specwarden/git_hook.py`.
 
-**Cause D — existing `prepare-commit-msg` hook not managed by spec-trace.**
+**Cause D — existing `prepare-commit-msg` hook not managed by specwarden.**
 
-If a `prepare-commit-msg` hook existed before `spec-trace git-hook install` was run, `install_hook` raises a `RuntimeError` and does not overwrite it. The install command would have printed an error; the hook was never written.
+If a `prepare-commit-msg` hook existed before `specwarden git-hook install` was run, `install_hook` raises a `RuntimeError` and does not overwrite it. The install command would have printed an error; the hook was never written.
 
 **Fix D:**
 
@@ -231,7 +231,7 @@ Inspect the existing hook:
 cat .git/hooks/prepare-commit-msg
 ```
 
-If it does not contain the spec-trace logic, merge by hand: append the block from `src/spec_trace/git_hook.py` (the `HOOK_SCRIPT` constant) to the existing hook file, then make it executable.
+If it does not contain the specwarden logic, merge by hand: append the block from `src/specwarden/git_hook.py` (the `HOOK_SCRIPT` constant) to the existing hook file, then make it executable.
 
 ---
 
@@ -254,7 +254,7 @@ Verify the PostToolUse entry exists in `.claude/settings.json`:
   {
     "matcher": "Edit|Write|MultiEdit|NotebookEdit",
     "hooks": [
-      {"type": "command", "command": "python -m spec_trace.hooks.post_tool_use"}
+      {"type": "command", "command": "python -m specwarden.hooks.post_tool_use"}
     ]
   }
 ]
@@ -264,7 +264,7 @@ Run the hook manually to confirm it works:
 
 ```bash
 echo '{"tool_name":"Write","tool_input":{"file_path":"foo.py","content":"x\ny\n"}}' \
-  | python -m spec_trace.hooks.post_tool_use
+  | python -m specwarden.hooks.post_tool_use
 ```
 
 With an active spec, this should append a block to `.claude/decisions/<spec-id>.md` and exit 0.
@@ -276,7 +276,7 @@ PostToolUse checks for an active spec independently of PreToolUse. If the active
 **Fix B:**
 
 ```bash
-spec-trace status
+specwarden status
 ```
 
 Ensure the spec is still active. Re-activate if needed.
@@ -295,12 +295,12 @@ Ensure the running user has write access to `.claude/decisions/`.
 
 ---
 
-## `spec-trace coverage` shows 0% on a repo with spec-traced commits
+## `specwarden coverage` shows 0% on a repo with specwardend commits
 
 **Symptom:**
 
 ```
-$ spec-trace coverage --last 20
+$ specwarden coverage --last 20
 0/20 commits have spec coverage (0%)
 uncovered:
   abc123456789
@@ -311,7 +311,7 @@ But the commits clearly have `Spec:` lines in their messages.
 
 **Cause:**
 
-`spec-trace coverage` calls `git log --oneline -N` to get commit SHAs, then calls `git log -1 --format=%B <sha>` on each SHA to read the full commit body. It looks for lines matching the pattern `Spec: ` (case-sensitive, at the start of a line).
+`specwarden coverage` calls `git log --oneline -N` to get commit SHAs, then calls `git log -1 --format=%B <sha>` on each SHA to read the full commit body. It looks for lines matching the pattern `Spec: ` (case-sensitive, at the start of a line).
 
 If the `Spec:` trailer was added with different casing, extra whitespace, or a different separator (e.g., `spec:` lowercase, or `Spec : ` with a space before the colon), it will not match.
 
@@ -334,18 +334,18 @@ cat .git/hooks/prepare-commit-msg
 Reinstall if needed:
 
 ```bash
-spec-trace git-hook uninstall
-spec-trace git-hook install
+specwarden git-hook uninstall
+specwarden git-hook install
 ```
 
 ---
 
-## `spec-trace trace <commit>` prints "no Spec: trailer on this commit"
+## `specwarden trace <commit>` prints "no Spec: trailer on this commit"
 
 **Symptom:**
 
 ```
-$ spec-trace trace HEAD
+$ specwarden trace HEAD
 commit: abc1234
 no Spec: trailer on this commit.
 ```
@@ -384,12 +384,12 @@ Test the hook directly:
 
 ```bash
 echo '{"tool_name":"Edit","tool_input":{"file_path":"x","old_string":"a","new_string":"b"}}' \
-  | timeout 5 python -m spec_trace.hooks.pre_tool_use
+  | timeout 5 python -m specwarden.hooks.pre_tool_use
 echo "exit: $?"
 ```
 
 If this hangs or times out, the issue is in the hook script or its environment (e.g., a `.pth` file that triggers an interactive import). Run with `python -v` to trace imports:
 
 ```bash
-echo '...' | python -v -m spec_trace.hooks.pre_tool_use 2>&1 | head -50
+echo '...' | python -v -m specwarden.hooks.pre_tool_use 2>&1 | head -50
 ```

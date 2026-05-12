@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from spec_trace.paths import RepoPaths
+from specwarden.paths import RepoPaths
 
 
 def test_repo_paths_under_root(tmp_path: Path):

@@ -8,7 +8,7 @@ def _run(cwd: Path) -> str:
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(Path(__file__).resolve().parents[1] / "src"))
     proc = subprocess.run(
-        [sys.executable, "-m", "spec_trace.hooks.session_start"],
+        [sys.executable, "-m", "specwarden.hooks.session_start"],
         input="",
         capture_output=True,
         text=True,
@@ -21,7 +21,7 @@ def _run(cwd: Path) -> str:
 
 def test_no_active_prints_reminder(tmp_path: Path):
     out = _run(tmp_path)
-    assert "spec-trace" in out.lower()
+    assert "specwarden" in out.lower()
     assert "no active spec" in out.lower()
 
 

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "spec-trace"
+name = "specwarden"
 version = "0.1.0"
 description = "Force a written spec before any code change. Logs every edit with a backlink."
 readme = "README.md"
@@ -22,10 +22,10 @@ dev = [
 ]
 
 [project.scripts]
-spec-trace = "spec_trace.cli:app"
+specwarden = "specwarden.cli:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/spec_trace"]
+packages = ["src/specwarden"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

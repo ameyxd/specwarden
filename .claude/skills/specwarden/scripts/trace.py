@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Slash command shim for /coverage — delegates to `spec-trace coverage`."""
+"""Slash command shim for /trace — delegates to `specwarden trace`."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ import sys
 
 
 def main(argv: list[str]) -> int:
-    return subprocess.call(["spec-trace", "coverage", *argv])
+    args = argv if argv else ["HEAD"]
+    return subprocess.call(["specwarden", "trace", *args])
 
 
 if __name__ == "__main__":

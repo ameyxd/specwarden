@@ -1,7 +1,7 @@
-# Example: Go microservice with spec-trace
+# Example: Go microservice with specwarden
 
 This example shows what a small Go HTTP service looks like after a feature
-has been authored under spec-trace. The feature is a `GET /version` endpoint
+has been authored under specwarden. The feature is a `GET /version` endpoint
 added to a chi-based service that already has `/health` and `/items`.
 
 ## What to look at, in order
@@ -28,4 +28,4 @@ curl http://localhost:8080/health
 
 In a real repo you would also see commits with a `Spec: 2026-05-08_add-version-endpoint`
 trailer; git history is omitted here to keep the example focused on the
-artifacts spec-trace produces.
+artifacts specwarden produces.
