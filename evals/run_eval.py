@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,20 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "evals" / "fixtures"
 SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "spec-trace"
+SRC_DIR = REPO_ROOT / "src"
+
+
+def _subprocess_env() -> dict[str, str]:
+    """Env that guarantees spec_trace is importable from any subprocess.
+
+    Works around a Python 3.14 + hatchling editable-install quirk where the
+    .pth file is sometimes not processed. Prepending src/ to PYTHONPATH
+    makes `python -m spec_trace.<X>` work regardless of install state.
+    """
+    env = os.environ.copy()
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{SRC_DIR}{os.pathsep}{existing}" if existing else str(SRC_DIR)
+    return env
 
 
 @dataclass(frozen=True)
@@ -55,7 +70,11 @@ def setup_workdir(fixture: Path, arm: str) -> Path:
         skill_dest.mkdir(parents=True, exist_ok=True)
         shutil.copytree(SKILL_DIR, skill_dest, dirs_exist_ok=True)
     if arm == "C":
-        subprocess.run(["spec-trace", "init", "--root", str(workdir)], check=True)
+        subprocess.run(
+            [sys.executable, "-m", "spec_trace.cli", "init", "--root", str(workdir)],
+            check=True,
+            env=_subprocess_env(),
+        )
 
     return workdir
 
@@ -69,14 +88,17 @@ def run_claude(
     prompt_text = prompt_path.read_text(encoding="utf-8")
     start = time.monotonic()
     proc = subprocess.run(
-        ["claude", "-p", "--output-format", "stream-json"],
+        ["claude", "-p", "--output-format", "stream-json", "--verbose"],
         input=prompt_text,
         capture_output=True,
         text=True,
         cwd=workdir,
+        env=_subprocess_env(),
     )
     elapsed = time.monotonic() - start
     log_path.write_text(proc.stdout, encoding="utf-8")
+    if proc.stderr:
+        (log_path.with_suffix(".stderr.txt")).write_text(proc.stderr, encoding="utf-8")
     return elapsed, proc.returncode
 
 

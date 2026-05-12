@@ -173,3 +173,7 @@ def git_hook_uninstall(root: Path | None = ROOT_OPTION) -> None:
 
     uninstall_hook(_resolve_root(root))
     typer.echo("uninstalled.")
+
+
+if __name__ == "__main__":
+    app()
