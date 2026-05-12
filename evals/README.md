@@ -31,15 +31,26 @@ pieces:
 
 ## Three-Arm Benchmark Structure
 
-Each task is run in three arms:
+Each task is run in three arms. The runner (`evals/run_eval.py`) launches
+`claude --bare` for every arm so the host's plugins, skills, and
+`CLAUDE.md` cannot contaminate the session; arm-specific surface is
+introduced via explicit flags.
 
-- **Arm A (baseline):** Claude Code with no spec-trace installed. The session
-  starts from a clean extraction of `starting_state.tar.gz`.
-- **Arm B (spec-trace, no active spec):** spec-trace is installed and
-  initialised in the repo, but no spec is active. Hooks fire but emit no
-  active-spec context.
-- **Arm C (spec-trace, active spec):** spec-trace is installed and a spec
-  matching the task is activated before the session starts.
+| Arm | Skill in context | Hooks active | Flags |
+|---|---|---|---|
+| A (control) | no | no | `--bare`, full tool access via `--dangerously-skip-permissions` |
+| B (advisory) | yes (via `--append-system-prompt-file SKILL.md`) | no | A's flags + the SKILL.md system prompt |
+| C (enforced) | yes | yes (`PreToolUse`, `PostToolUse`, `SessionStart` from `.claude/settings.json`) | B's flags + `--settings <workdir>/.claude/settings.json` |
+
+Arm B isolates the contribution of *mere guidance* — does Claude behave
+better when it merely knows the spec-trace skill exists? Arm C measures
+the contribution of mechanical enforcement (the PreToolUse hook blocks
+edits with no active spec; PostToolUse appends each accepted edit to the
+decisions log).
+
+For arm C, no spec is pre-activated. The PreToolUse hook will return
+`ask` on the first edit, prompting Claude to invoke `/spec` and create
+one before proceeding — the same loop a human developer would see.
 
 ## Metrics
 
