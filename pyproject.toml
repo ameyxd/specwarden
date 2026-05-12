@@ -36,11 +36,11 @@ addopts = "-q --strict-markers"
 line-length = 100
 target-version = "py310"
 src = ["src", "tests"]
+extend-exclude = ["evals/fixtures/**/starting_state/**", "examples/**"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "PTH"]
 ignore = ["E501"]  # line length handled by formatter
-exclude = ["evals/fixtures/**/starting_state/**", "examples/**"]
 
 [tool.ruff.format]
 quote-style = "double"
