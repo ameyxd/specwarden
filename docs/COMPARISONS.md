@@ -137,25 +137,25 @@ MCP servers are the right choice when you want to give the model access to exter
 
 ---
 
-## Caveman
+## Other Claude Code skills (e.g. Caveman)
 
-### What it is
+### What they are
 
-Caveman is a Claude Code skill (the project that demonstrated the "tightly scoped skill with a benchmark" launch pattern that informed specwarden's strategy). It reached 5K+ stars quickly and hit 10K upvotes on r/ClaudeAI. Caveman is aimed at a different domain — reducing Claude Code's verbosity, enforcing a minimal response style, keeping the agent focused rather than expansive. The specific behavior it enforces is different from specwarden's.
+A growing set of community Claude Code skills target single behavioral disciplines: response style, verbosity, tool selection, refactor scope, and so on. Caveman is one example often cited in this category. Each ships as a `SKILL.md` (sometimes with companion hooks) that registers in `.claude/settings.json` alongside any other skills the user has installed.
 
-### What it shares with specwarden
+This section does not attempt to summarize any specific peer skill's behavior or adoption — those move quickly and are better read from each project's own repository.
 
-Both are Claude Code skills with a `SKILL.md` file. Both have a benchmark. Both are tightly scoped with a single stated purpose. Both use the "skill + hooks" pattern to go beyond advisory text.
+### What they share with specwarden
+
+A `SKILL.md` plus optional hook scripts is the common shape. Each one tends to pick a single discipline and enforce it narrowly rather than attempting a general-purpose configuration. Multiple skills can coexist in one Claude Code session; their hooks run independently on matching tool events.
 
 ### What is different
 
-Caveman targets response style and verbosity. specwarden targets pre-edit workflow discipline: requiring a written spec before filesystem edits land.
-
-They address different layers of the same general problem (agents doing too much or behaving unexpectedly) but at different points in the interaction. Caveman shapes how Claude responds. specwarden shapes what Claude is allowed to do.
+specwarden's discipline is pre-edit workflow gating: requiring a written spec before filesystem edits land, and recording every edit with a backlink to the spec that authorized it. The disciplines other skills enforce (style, verbosity, scope guardrails) operate at different points in the agent interaction and address different failure modes.
 
 ### When to use both
 
-They do not conflict. A project can install Caveman's skill for response discipline and specwarden for spec enforcement simultaneously. The hooks are registered independently in `settings.json`; Claude Code runs all matching hooks per tool event.
+A Claude Code session can register multiple skills simultaneously. Their hooks are listed independently in `.claude/settings.json` and run on the events they match. specwarden does not conflict with skills that target response style, tool selection, or other non-overlapping behaviors.
 
 ---
 
@@ -167,7 +167,6 @@ They do not conflict. A project can install Caveman's skill for response discipl
 | Karpathy CLAUDE.md | yes | no | no | no | no | yes (any host) |
 | Cursor `.cursorrules` | yes | no | no | no | no | Cursor only |
 | MCP server | no* | no | no | no | no | yes |
-| Caveman | yes | yes (style) | no | no | no | Claude Code |
 | specwarden | yes | yes (edits) | yes | yes | yes | Claude Code + |
 
 \* MCP servers provide tools the model can call; they are not advisory in the CLAUDE.md sense. The "no" reflects that they do not inject rules into model context.

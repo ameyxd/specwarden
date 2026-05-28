@@ -117,3 +117,61 @@ def test_git_hook_install_and_uninstall(runner: CliRunner, tmp_path: Path):
     r2 = runner.invoke(app, ["git-hook", "uninstall", "--root", str(tmp_path)])
     assert r2.exit_code == 0, r2.stdout
     assert not hook.exists()
+
+
+def test_coverage_reports_against_real_commits(runner: CliRunner, tmp_path: Path):
+    import subprocess
+
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+    (tmp_path / "f.txt").write_text("a")
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "covered\n\nSpec: 2026-05-28_demo"],
+        cwd=tmp_path,
+        check=True,
+    )
+    (tmp_path / "f.txt").write_text("b")
+    subprocess.run(
+        ["git", "commit", "-q", "-am", "uncovered, no trailer"], cwd=tmp_path, check=True
+    )
+
+    result = runner.invoke(app, ["coverage", "--last", "10", "--root", str(tmp_path)])
+
+    assert result.exit_code == 0, result.stdout
+    assert "1/2 commits have spec coverage (50%)" in result.stdout
+    assert "uncovered:" in result.stdout
+
+
+def test_trace_with_active_spec_succeeds(runner: CliRunner, tmp_path: Path):
+    import subprocess
+
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+
+    assert runner.invoke(app, ["init", "--root", str(tmp_path)]).exit_code == 0
+    r_new = runner.invoke(app, ["new", "demo trace spec", "--author", "t", "--root", str(tmp_path)])
+    assert r_new.exit_code == 0, r_new.stdout
+    spec_id = r_new.stdout.strip().split()[-1]
+    assert runner.invoke(app, ["activate", spec_id, "--root", str(tmp_path)]).exit_code == 0
+
+    (tmp_path / ".claude" / "decisions" / f"{spec_id}.md").write_text(
+        f"# Decisions: {spec_id}\n\nlog body\n"
+    )
+    (tmp_path / "f.txt").write_text("a")
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", f"feat: demo\n\nSpec: {spec_id}"],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    result = runner.invoke(app, ["trace", "HEAD", "--root", str(tmp_path)])
+
+    assert result.exit_code == 0, result.stdout
+    assert "commit:" in result.stdout
+    assert f"spec:   {spec_id}" in result.stdout
+    assert "demo trace spec" in result.stdout
+    assert "log body" in result.stdout
