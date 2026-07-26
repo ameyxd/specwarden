@@ -121,6 +121,7 @@ def test_render_scorecard_table_shape():
             arm="A",
             wall_seconds=10.0,
             files_modified=2,
+            timed_out=False,
             edit_attempts=1,
             blocked_edits=1,
             clarification_count=0,
@@ -233,3 +234,27 @@ def test_unblocked_edit_is_not_counted_as_blocked(tmp_path: Path):
     _, _, _, _, edit_attempts, blocked = parse_jsonl(log)
 
     assert (edit_attempts, blocked) == (1, 0)
+
+
+def test_measure_defaults_timed_out_for_older_summaries(tmp_path: Path):
+    """summary.json files written before the watchdog existed lack the field."""
+    nested = tmp_path / "evals" / "results" / "_local"
+    nested.mkdir(parents=True)
+    log = nested / "t_A_1.jsonl"
+    log.write_text(json.dumps({"type": "result", "total_cost_usd": 0.1, "num_turns": 1}) + "\n")
+    (nested / "summary.json").write_text(
+        json.dumps(
+            [
+                {
+                    "task": "t",
+                    "arm": "A",
+                    "wall_seconds": 1.0,
+                    "files_modified": 0,
+                    "exit_status": 0,
+                    "log_path": f"evals/results/_local/{log.name}",
+                }
+            ]
+        )
+    )
+
+    assert measure(nested)[0].timed_out is False

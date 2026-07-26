@@ -35,6 +35,7 @@ class Measurement:
     arm: str
     wall_seconds: float
     files_modified: int
+    timed_out: bool
     edit_attempts: int
     blocked_edits: int
     clarification_count: int
@@ -170,6 +171,7 @@ def measure(results_dir: Path) -> list[Measurement]:
                 arm=entry["arm"],
                 wall_seconds=float(entry["wall_seconds"]),
                 files_modified=int(entry["files_modified"]),
+                timed_out=bool(entry.get("timed_out", False)),
                 edit_attempts=edit_attempts,
                 blocked_edits=blocked_edits,
                 clarification_count=clarifications,
@@ -193,7 +195,7 @@ def render_scorecard(measurements: list[Measurement]) -> str:
             f"| {m.task} | {m.arm} | {m.wall_seconds:.1f} | {m.num_turns} | "
             f"{m.tool_call_count} | {m.edit_attempts} | {m.blocked_edits} | "
             f"{m.files_modified} | {m.clarification_count} | "
-            f"${m.cost_usd:.4f} | {m.exit_status} |"
+            f"${m.cost_usd:.4f} | {'TIMEOUT' if m.timed_out else m.exit_status} |"
         )
     return "\n".join(lines) + "\n"
 
