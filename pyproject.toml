@@ -18,7 +18,11 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
-    "ruff>=0.5",
+    # Pinned to a minor range on purpose. CI installed `ruff>=0.5`, resolved to
+    # whatever was newest, and went red when 0.16 began formatting Python inside
+    # markdown code blocks — a change unrelated to anything in the diff. An
+    # unpinned formatter means any upstream release can break an unrelated PR.
+    "ruff>=0.16,<0.17",
 ]
 
 [project.scripts]

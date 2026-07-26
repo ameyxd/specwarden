@@ -778,7 +778,9 @@ def append_decision(
         f"- Tool: {entry.tool}\n\n"
     )
     if not log.exists():
-        header = f"# Decisions: {spec_id}\n\nAppend-only log of changes authorized by this spec.\n\n"
+        header = (
+            f"# Decisions: {spec_id}\n\nAppend-only log of changes authorized by this spec.\n\n"
+        )
         log.write_text(header + block, encoding="utf-8")
     else:
         with log.open("a", encoding="utf-8") as f:
@@ -824,9 +826,7 @@ from specwarden.coverage import CoverageReport, compute_coverage
 
 
 def _git(repo: Path, *args: str) -> str:
-    out = subprocess.run(
-        ["git", *args], cwd=repo, check=True, capture_output=True, text=True
-    )
+    out = subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
     return out.stdout
 
 
@@ -1099,9 +1099,7 @@ def test_init_creates_layout(runner: CliRunner, tmp_path: Path):
 
 def test_new_then_activate_then_done(runner: CliRunner, tmp_path: Path):
     runner.invoke(app, ["init", "--root", str(tmp_path)])
-    r1 = runner.invoke(
-        app, ["new", "Add JWT Auth", "--author", "Amey", "--root", str(tmp_path)]
-    )
+    r1 = runner.invoke(app, ["new", "Add JWT Auth", "--author", "Amey", "--root", str(tmp_path)])
     assert r1.exit_code == 0, r1.stdout
     spec_id = r1.stdout.strip().split()[-1]
 
@@ -1223,8 +1221,7 @@ def coverage(
     """Report Spec: trailer coverage over the last N commits."""
     report = compute_coverage(root, last=last)
     typer.echo(
-        f"{report.covered}/{report.total} commits have spec coverage "
-        f"({report.percentage:.0f}%)"
+        f"{report.covered}/{report.total} commits have spec coverage ({report.percentage:.0f}%)"
     )
     if report.uncovered_hashes:
         typer.echo("uncovered:")
@@ -1452,6 +1449,7 @@ app.add_typer(git_hook_app, name="git-hook")
 @git_hook_app.command("install")
 def git_hook_install(root: Path = _root_option()) -> None:
     from .git_hook import install_hook
+
     path = install_hook(root)
     typer.echo(f"installed: {path}")
 
@@ -1459,6 +1457,7 @@ def git_hook_install(root: Path = _root_option()) -> None:
 @git_hook_app.command("uninstall")
 def git_hook_uninstall(root: Path = _root_option()) -> None:
     from .git_hook import uninstall_hook
+
     uninstall_hook(root)
     typer.echo("uninstalled.")
 ```
@@ -1535,6 +1534,7 @@ def test_edit_with_active_spec_is_allowed(tmp_path: Path):
 def test_quickfix_env_overrides(tmp_path: Path, monkeypatch):
     (tmp_path / ".claude" / "specs").mkdir(parents=True)
     import os
+
     env = os.environ.copy()
     env["SPECWARDEN_QUICKFIX"] = "1"
     out = _run({"tool_name": "Write"}, cwd=tmp_path, env=env)
@@ -1551,6 +1551,7 @@ Expected: FileNotFoundError on the hook.
 ```python
 #!/usr/bin/env python3
 """specwarden PreToolUse hook. Self-contained — no external imports."""
+
 from __future__ import annotations
 
 import json
@@ -1686,6 +1687,7 @@ Expected: FileNotFoundError.
 ```python
 #!/usr/bin/env python3
 """specwarden PostToolUse hook. Self-contained."""
+
 from __future__ import annotations
 
 import json
@@ -1740,7 +1742,9 @@ def main() -> int:
         f"- Tool: {tool}\n\n"
     )
     if not log_file.exists():
-        header = f"# Decisions: {spec_id}\n\nAppend-only log of changes authorized by this spec.\n\n"
+        header = (
+            f"# Decisions: {spec_id}\n\nAppend-only log of changes authorized by this spec.\n\n"
+        )
         log_file.write_text(header + block, encoding="utf-8")
     else:
         with log_file.open("a", encoding="utf-8") as f:
@@ -1789,9 +1793,7 @@ HOOK = Path(__file__).resolve().parents[1] / "hooks" / "session_start.py"
 
 
 def _run(cwd: Path) -> str:
-    proc = subprocess.run(
-        ["python", str(HOOK)], input="", capture_output=True, text=True, cwd=cwd
-    )
+    proc = subprocess.run(["python", str(HOOK)], input="", capture_output=True, text=True, cwd=cwd)
     assert proc.returncode == 0, proc.stderr
     return proc.stdout
 
@@ -1818,6 +1820,7 @@ Run: `pytest tests/test_session_start.py -v`
 ```python
 #!/usr/bin/env python3
 """specwarden SessionStart hook."""
+
 from __future__ import annotations
 
 import sys
@@ -1833,7 +1836,9 @@ def main() -> int:
     repo = Path.cwd()
     marker = repo / ".claude" / "specs" / "active"
     if marker.exists() and marker.read_text(encoding="utf-8").strip():
-        sys.stdout.write(f"specwarden: active spec is {marker.read_text(encoding='utf-8').strip()}\n")
+        sys.stdout.write(
+            f"specwarden: active spec is {marker.read_text(encoding='utf-8').strip()}\n"
+        )
         return 0
     sys.stdout.write(REMINDER)
     return 0
