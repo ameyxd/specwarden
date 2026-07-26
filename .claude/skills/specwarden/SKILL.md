@@ -9,7 +9,7 @@ description: Use when starting any non-trivial code change in this repo — refu
 
 ## What this does
 
-specwarden enforces a spec-first discipline: before any Edit or Write tool call lands, a structured one-page spec must exist and be marked ready. The PreToolUse hook reads `.claude/specs/active` on every tool call; if no spec is active, the hook denies the call and tells you why. This makes the discipline mechanical rather than voluntary.
+specwarden enforces a spec-first discipline: before any Edit or Write tool call lands, a structured one-page spec must exist, be active, and have all four sections written. The PreToolUse hook reads `.claude/specs/active` and the spec file on every tool call; if no spec is active, or the active one is still an unfilled template, the hook denies the call and tells you why. This makes the discipline mechanical rather than voluntary.
 
 The gate's reach is exactly its matcher: `Edit|Write|MultiEdit|NotebookEdit`. Shell commands are not matched, so writing a file through `cat >`, `sed -i` or `tee` bypasses both the gate and the decisions log. Do not route edits through Bash to get around a missing spec — write the spec. If a spec would genuinely be absurd for the change, `SPECWARDEN_QUICKFIX=1` is the sanctioned bypass and leaves an honest uncovered commit behind.
 
@@ -19,7 +19,9 @@ Once a spec is active, every edit is logged to `.claude/decisions/<spec-id>.md` 
 
 ### `/spec <slug>`
 
-Creates a new spec file at `.claude/specs/<slug>.md` from the four-section template and writes the slug to `.claude/specs/active`. Until all four sections are filled in and you type `ready`, the PreToolUse hook blocks any Edit or Write call with a message indicating which sections are still empty.
+Creates a new spec file at `.claude/specs/<slug>.md` from the four-section template and writes the slug to `.claude/specs/active`. Until all four sections are filled in, the PreToolUse hook denies any Edit or Write call and names the sections that are still empty. A section counts as written when it has at least one real bullet; the template's `- TODO` placeholders do not count, so `new` plus `activate` alone does not unlock editing.
+
+There is no `ready` handshake. The gate reads the spec file on every tool call and nothing else — it has no notion of a confirmation step, so no typed acknowledgement is required or recognised.
 
 ### `/trace [<commit>]`
 
@@ -75,7 +77,7 @@ How we will know we are done. Must be checkable.
 
 1. User describes a feature or fix.
 2. You invoke `/spec <slug>` and fill in all four sections in conversation. Push back on vague assumptions, surface trade-offs, propose non-goals to prevent scope creep.
-3. User reviews the spec and types `ready`.
+3. User reviews the spec and types `ready`. This step is a behavioural convention in this skill, not something the hooks check — waiting for it is your job, and nothing enforces it if you skip it. What the hook does check is that the four sections are written.
 4. You proceed to edit. Each edit is appended to `.claude/decisions/<spec-id>.md` with a timestamp.
 5. When the work is done, run `specwarden done` from the terminal (or call the `mark_done` helper) to flip the spec status to `completed`.
 6. Commits made while the spec is active automatically carry a `Spec: <id>` trailer if `specwarden git-hook install` was run beforehand.

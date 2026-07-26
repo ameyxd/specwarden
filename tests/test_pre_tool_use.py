@@ -37,6 +37,62 @@ def _hso(out: dict) -> dict:
     return out["hookSpecificOutput"]
 
 
+# --- spec completeness ---------------------------------------------------
+
+TEMPLATE = """# {sid}: demo
+
+## Assumptions
+What we are taking as given.
+
+- TODO
+
+## Scope
+What this change is.
+
+- TODO
+
+## Non-goals
+What this change is explicitly not.
+
+- TODO
+
+## Success criteria
+How we will know we are done.
+
+- [ ] TODO
+"""
+
+FILLED = """# demo
+
+## Assumptions
+What we are taking as given.
+
+- calc.py is the only arithmetic module
+
+## Scope
+What this change is.
+
+- Add subtract() to calc.py
+
+## Non-goals
+What this change is explicitly not.
+
+- No division helper
+
+## Success criteria
+How we will know we are done.
+
+- [ ] subtract(5, 3) returns 2
+"""
+
+
+def _activate(tmp_path: Path, body: str, sid: str = "2026-07-25_demo") -> None:
+    specs = tmp_path / ".claude" / "specs"
+    specs.mkdir(parents=True, exist_ok=True)
+    (specs / f"{sid}.md").write_text(body.replace("{sid}", sid))
+    (specs / "active").write_text(f"{sid}\n")
+
+
 # --- wire format ---------------------------------------------------------
 
 
@@ -66,12 +122,12 @@ def test_bare_top_level_permission_decision_is_never_emitted(tmp_path: Path):
     quickfix = os.environ.copy()
     quickfix["SPECWARDEN_QUICKFIX"] = "1"
     quickfix.setdefault("PYTHONPATH", SRC)
-    active = tmp_path / ".claude" / "specs" / "active"
-
     outs = [_run({"tool_name": "Read"}, cwd=tmp_path)]
     outs.append(_run({"tool_name": "Edit"}, cwd=tmp_path))
     outs.append(_run({"tool_name": "Write"}, cwd=tmp_path, env=quickfix))
-    active.write_text("2026-05-07_demo\n")
+    _activate(tmp_path, FILLED)
+    outs.append(_run({"tool_name": "Edit"}, cwd=tmp_path))
+    _activate(tmp_path, TEMPLATE)
     outs.append(_run({"tool_name": "Edit"}, cwd=tmp_path))
 
     assert [o for o in outs if "permissionDecision" in o] == []
@@ -92,8 +148,7 @@ def test_edit_with_no_active_spec_is_denied(tmp_path: Path):
 
 
 def test_edit_with_active_spec_is_allowed(tmp_path: Path):
-    (tmp_path / ".claude" / "specs").mkdir(parents=True)
-    (tmp_path / ".claude" / "specs" / "active").write_text("2026-05-07_demo\n")
+    _activate(tmp_path, FILLED)
     out = _run({"tool_name": "Edit"}, cwd=tmp_path)
     assert _hso(out)["permissionDecision"] == "allow"
 
@@ -120,3 +175,47 @@ def test_allow_does_not_emit_a_legacy_decision(tmp_path: Path):
     """Legacy `decision` has no allow value; emitting one would block."""
     out = _run({"tool_name": "Read"}, cwd=tmp_path)
     assert "decision" not in out
+
+
+def test_untouched_template_does_not_unlock_editing(tmp_path: Path):
+    """`specwarden new` + `activate` must not be a two-command bypass."""
+    _activate(tmp_path, TEMPLATE)
+    out = _run({"tool_name": "Edit"}, cwd=tmp_path)
+    assert _hso(out)["permissionDecision"] == "deny"
+
+
+def test_deny_names_the_unwritten_sections(tmp_path: Path):
+    _activate(tmp_path, TEMPLATE)
+    reason = _hso(_run({"tool_name": "Edit"}, cwd=tmp_path))["permissionDecisionReason"]
+    assert all(s in reason for s in ("Assumptions", "Scope", "Non-goals", "Success criteria"))
+
+
+def test_fully_written_spec_allows_editing(tmp_path: Path):
+    _activate(tmp_path, FILLED)
+    out = _run({"tool_name": "Edit"}, cwd=tmp_path)
+    assert _hso(out)["permissionDecision"] == "allow"
+
+
+def test_partially_written_spec_names_only_the_gaps(tmp_path: Path):
+    partial = FILLED.replace("- Add subtract() to calc.py", "- TODO")
+    _activate(tmp_path, partial)
+    reason = _hso(_run({"tool_name": "Edit"}, cwd=tmp_path))["permissionDecisionReason"]
+    assert "Scope" in reason and "Assumptions" not in reason
+
+
+def test_active_pointing_at_a_missing_file_is_denied(tmp_path: Path):
+    specs = tmp_path / ".claude" / "specs"
+    specs.mkdir(parents=True)
+    (specs / "active").write_text("2026-07-25_ghost\n")
+    out = _run({"tool_name": "Edit"}, cwd=tmp_path)
+    assert _hso(out)["permissionDecision"] == "deny"
+
+
+def test_quickfix_still_bypasses_an_incomplete_spec(tmp_path: Path):
+    """The documented escape hatch must not be blocked by the new check."""
+    _activate(tmp_path, TEMPLATE)
+    env = os.environ.copy()
+    env["SPECWARDEN_QUICKFIX"] = "1"
+    env.setdefault("PYTHONPATH", SRC)
+    out = _run({"tool_name": "Edit"}, cwd=tmp_path, env=env)
+    assert _hso(out)["permissionDecision"] == "allow"
