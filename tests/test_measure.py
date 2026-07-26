@@ -175,7 +175,10 @@ def test_parse_jsonl_counts_blocked_edits(tmp_path: Path):
                 "content": [
                     {
                         "type": "tool_result",
-                        "content": "specwarden: no active spec. Run `/spec <slug>` first.",
+                        "content": (
+                            "specwarden: no active spec. Run `/spec <slug>` first to "
+                            "define what you're building before editing files."
+                        ),
                     }
                 ]
             },
@@ -199,7 +202,15 @@ def test_parse_jsonl_reads_blocks_from_structured_tool_results(tmp_path: Path):
                 "content": [
                     {
                         "type": "tool_result",
-                        "content": [{"type": "text", "text": "specwarden: no active spec."}],
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": (
+                                    "specwarden: no active spec. Run `/spec <slug>` first "
+                                    "to define what you're building before editing files."
+                                ),
+                            }
+                        ],
                     }
                 ]
             },
@@ -258,3 +269,38 @@ def test_measure_defaults_timed_out_for_older_summaries(tmp_path: Path):
     )
 
     assert measure(nested)[0].timed_out is False
+
+
+def test_session_start_banner_is_not_counted_as_a_block(tmp_path: Path):
+    """The banner shares a prefix with the deny reason but is not an enforcement event."""
+    banner = (
+        "specwarden: no active spec. Run `/spec <slug>` to define what you're building.\n"
+        "  Spec template sections: Assumptions, Scope, Non-goals, Success criteria.\n"
+    )
+    log = tmp_path / "session.jsonl"
+    events = [
+        {"type": "user", "message": {"content": [{"type": "tool_result", "content": banner}]}},
+        {"type": "result", "total_cost_usd": 0.1, "num_turns": 1},
+    ]
+    log.write_text("\n".join(json.dumps(e) for e in events))
+
+    _, _, _, _, _, blocked = parse_jsonl(log)
+
+    assert blocked == 0
+
+
+def test_real_deny_reason_is_still_counted(tmp_path: Path):
+    deny = (
+        "specwarden: no active spec. Run `/spec <slug>` first to define "
+        "what you're building before editing files."
+    )
+    log = tmp_path / "session.jsonl"
+    events = [
+        {"type": "user", "message": {"content": [{"type": "tool_result", "content": deny}]}},
+        {"type": "result", "total_cost_usd": 0.1, "num_turns": 1},
+    ]
+    log.write_text("\n".join(json.dumps(e) for e in events))
+
+    _, _, _, _, _, blocked = parse_jsonl(log)
+
+    assert blocked == 1

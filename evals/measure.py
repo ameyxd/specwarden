@@ -26,7 +26,12 @@ QUESTION_PATTERNS = [
 EDITING_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 
 # The PreToolUse deny reason, as it appears in the tool_result the model sees.
-BLOCK_MARKER = "specwarden: no active spec"
+#
+# Matched on the tail, not on "specwarden: no active spec". That prefix is shared
+# with the SessionStart banner, which fires once per session whether or not any
+# edit was blocked — matching it would count a banner as an enforcement event and
+# inflate blocked_edits in exactly the direction that flatters the tool.
+BLOCK_MARKER = "before editing files"
 
 
 @dataclass(frozen=True)
