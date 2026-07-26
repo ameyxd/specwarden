@@ -6,7 +6,7 @@ specwarden has three pieces: a CLI, a set of hooks, and a skill. Each piece does
 
 **The CLI (`specwarden`)** is the user-facing command-line tool. It creates specs, activates them, marks them complete, reports coverage, and traces commits back to their originating spec. It also installs the git hook that appends `Spec:` trailers to commit messages. Installed via `pipx install specwarden`; entry point is `specwarden`.
 
-**The hooks** are three Python scripts invoked by Claude Code's lifecycle events. They run as child processes: Claude Code serializes a JSON payload to stdin, the hook reads it, writes a JSON response to stdout, and exits. The hooks live under `src/specwarden/hooks/` and ship inside the Python wheel so they are always available at `python -m specwarden.hooks.<name>`. See `docs/HOOKS.md` for the full JSON contract.
+**The hooks** are three Python scripts invoked by Claude Code's lifecycle events. They run as child processes: Claude Code serializes a JSON payload to stdin, the hook reads it, writes a JSON response to stdout, and exits. The hooks live under `src/specwarden/hooks/` and ship inside the Python wheel; `specwarden init` records the absolute path of each script so it runs regardless of how the package was installed. See `docs/HOOKS.md` for the full JSON contract.
 
 **The skill (`SKILL.md`)** is the natural-language description loaded into the model's context. It defines four slash commands (`/spec`, `/trace`, `/coverage`, `/spec-help`) and explains the spec-first discipline. It shapes model behavior before any hook fires. The skill lives at `.claude/skills/specwarden/SKILL.md` and is loaded by Claude Code at session start.
 
@@ -139,7 +139,7 @@ The hooks are invoked by Claude Code when the configured tool events fire. The `
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          {"type": "command", "command": "python -m specwarden.hooks.pre_tool_use"}
+          {"type": "command", "command": "/abs/python3 /abs/specwarden/hooks/pre_tool_use.py"}
         ]
       }
     ],
@@ -147,12 +147,12 @@ The hooks are invoked by Claude Code when the configured tool events fire. The `
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          {"type": "command", "command": "python -m specwarden.hooks.post_tool_use"}
+          {"type": "command", "command": "/abs/python3 /abs/specwarden/hooks/post_tool_use.py"}
         ]
       }
     ],
     "SessionStart": [
-      {"hooks": [{"type": "command", "command": "python -m specwarden.hooks.session_start"}]}
+      {"hooks": [{"type": "command", "command": "/abs/python3 /abs/specwarden/hooks/session_start.py"}]}
     ]
   }
 }
@@ -164,20 +164,28 @@ The hooks are invoked by Claude Code when the configured tool events fire. The `
 Claude calls Edit/Write/MultiEdit/NotebookEdit
     │
     ▼
-Claude Code → stdin JSON → python -m specwarden.hooks.pre_tool_use
+Claude Code → stdin JSON → <abs python> <abs pre_tool_use.py>
     │
     ├─ tool_name not in EDITING_TOOLS?
-    │      → stdout: {"permissionDecision": "allow"}
+    │      → allow
     │
     ├─ SPECWARDEN_QUICKFIX=1?
-    │      → stdout: {"permissionDecision": "allow"}
+    │      → allow
     │
     ├─ .claude/specs/active absent or empty?
-    │      → stdout: {"permissionDecision": "ask",
-    │                  "message": "specwarden: no active spec..."}
+    │      → deny "no active spec"
     │
-    └─ spec active
-           → stdout: {"permissionDecision": "allow"}
+    ├─ spec file missing, or four sections still unwritten?
+    │      → deny "still has unwritten sections: ..."
+    │
+    └─ spec active and written
+           → allow
+
+  every decision is nested:
+    {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                            "permissionDecision": "allow"|"deny",
+                            "permissionDecisionReason": "..."}}
+  denials also carry legacy top-level {"decision": "block", "reason": "..."}
 ```
 
 ### PostToolUse flow
@@ -186,7 +194,7 @@ Claude Code → stdin JSON → python -m specwarden.hooks.pre_tool_use
 Edit/Write/MultiEdit/NotebookEdit completes
     │
     ▼
-Claude Code → stdin JSON → python -m specwarden.hooks.post_tool_use
+Claude Code → stdin JSON → <abs python> <abs post_tool_use.py>
     │
     ├─ tool_name not in EDITING_TOOLS?  → exit 0 (no-op)
     ├─ no active spec?                  → exit 0 (no-op)
@@ -203,7 +211,7 @@ Claude Code → stdin JSON → python -m specwarden.hooks.post_tool_use
 Claude Code session opens
     │
     ▼
-Claude Code → python -m specwarden.hooks.session_start
+Claude Code → <abs python> <abs session_start.py>
     │
     ├─ .claude/specs/active exists and non-empty?
     │      → stdout: "specwarden: active spec is <id>\n"
@@ -232,9 +240,19 @@ The hook uses `grep -qxF` (whole-line fixed-string match) to avoid duplicating t
 
 ## Why hooks live in the wheel
 
-The hook commands are `python -m specwarden.hooks.pre_tool_use` rather than standalone scripts. This means the hooks are available wherever `python` resolves the `specwarden` package — after `pipx install specwarden`, the package is installed into an isolated environment and added to PATH. The `-m` invocation also avoids shebang line portability issues across Python installations.
+`specwarden init` records each hook as `<sys.executable> <absolute script path>`.
 
-Each hook module is self-contained: it imports only from the Python standard library and inlines the `_active_spec_id()` helper rather than importing it from `specwarden.paths`. This means a partial package installation (e.g., the `.pth` file not being processed) will still allow the hooks to function as long as `specwarden.hooks.*` is importable.
+Through 0.1.0 it wrote `python -m specwarden.hooks.pre_tool_use`, on the reasoning
+that pipx puts specwarden on PATH. That reasoning was wrong: pipx adds the
+*console script* to PATH, not the *package* to any interpreter's module path, so
+`-m` could not resolve it. A bare `python` is also absent on stock macOS and
+Debian. Either way the hook exited 1 — which `PreToolUse` treats as a
+non-blocking error — so the gate vanished without a sound.
+
+Each hook module is self-contained: it imports only from the standard library and
+inlines the `_active_spec_id()` helper rather than importing from
+`specwarden.paths`. That is what makes invocation by file path viable — the
+scripts do not need the package to be importable at all, only readable.
 
 ## Quick-fix mode
 

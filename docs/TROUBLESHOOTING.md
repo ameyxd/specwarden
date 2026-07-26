@@ -87,7 +87,7 @@ Inspect `.claude/settings.json` and confirm the PreToolUse entry looks exactly l
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          {"type": "command", "command": "python -m specwarden.hooks.pre_tool_use"}
+          {"type": "command", "command": "/abs/path/to/python3 /abs/path/to/specwarden/hooks/pre_tool_use.py"}
         ]
       }
     ]
@@ -97,24 +97,35 @@ Inspect `.claude/settings.json` and confirm the PreToolUse entry looks exactly l
 
 Run `specwarden init` again (it will not overwrite an existing file); if you have customized `settings.json`, merge the PreToolUse block by hand.
 
-**Cause B — `python` on PATH does not resolve `specwarden`.**
+**Cause B — the hook command cannot start (affects specwarden 0.1.0).**
 
-The hook command is `python -m specwarden.hooks.pre_tool_use`. Claude Code inherits the PATH and environment of the process that launched it. If `python` resolves to a system interpreter that does not have `specwarden` installed, the hook command will fail or produce a `ModuleNotFoundError`, and Claude Code may silently allow the edit rather than surfacing the failure.
+Through 0.1.0, `init` wrote `python -m specwarden.hooks.pre_tool_use`. That
+command cannot run on a normal install: stock macOS and Debian have no `python`,
+and a `pipx`-installed specwarden lives in an isolated venv that no ambient
+interpreter can import. Both produce a non-zero exit.
 
-**Fix B:**
+**This fails open.** For `PreToolUse`, only exit 2 blocks; exit 1 is a
+non-blocking error and Claude Code runs the tool anyway. A `ModuleNotFoundError`
+exits 1, so the edit proceeds and the gate is simply absent.
 
-Check which Python is on the PATH that Claude Code sees:
+**Fix B:** upgrade and re-init.
 
 ```bash
-which python
-python -c "import specwarden; print(specwarden.__file__)"
+pipx upgrade specwarden      # 0.2.0 or later
+rm .claude/settings.json     # or edit the hook commands by hand
+specwarden init
 ```
 
-If `specwarden` is not importable, either install it into that Python environment or change the hook command in `settings.json` to use an absolute path to the interpreter:
+0.2.0 records the absolute interpreter (`sys.executable` from the process that
+ran `init`) and the absolute path of the hook script, so no PATH or module
+resolution is involved. Verify by running the recorded command yourself:
 
-```json
-{"type": "command", "command": "/home/alice/.local/pipx/venvs/specwarden/bin/python -m specwarden.hooks.pre_tool_use"}
+```bash
+echo '{"tool_name":"Edit"}' \
+  | "$(python3 -c "import json;print(json.load(open('.claude/settings.json'))['hooks']['PreToolUse'][0]['hooks'][0]['command'])")"
 ```
+
+It should print a `deny` nested under `hookSpecificOutput`.
 
 **Cause C — wrong `settings.json` being loaded.**
 
@@ -254,7 +265,7 @@ Verify the PostToolUse entry exists in `.claude/settings.json`:
   {
     "matcher": "Edit|Write|MultiEdit|NotebookEdit",
     "hooks": [
-      {"type": "command", "command": "python -m specwarden.hooks.post_tool_use"}
+      {"type": "command", "command": "/abs/path/to/python3 /abs/path/to/specwarden/hooks/post_tool_use.py"}
     ]
   }
 ]
@@ -264,7 +275,7 @@ Run the hook manually to confirm it works:
 
 ```bash
 echo '{"tool_name":"Write","tool_input":{"file_path":"foo.py","content":"x\ny\n"}}' \
-  | python -m specwarden.hooks.post_tool_use
+  | "$(python3 -c "import json;print(json.load(open('.claude/settings.json'))['hooks']['PostToolUse'][0]['hooks'][0]['command'])")"
 ```
 
 With an active spec, this should append a block to `.claude/decisions/<spec-id>.md` and exit 0.
@@ -383,10 +394,15 @@ The hook command is blocking — it is waiting on stdin after consuming the payl
 Test the hook directly:
 
 ```bash
+HOOK="$(python3 -c "import json;print(json.load(open('.claude/settings.json'))['hooks']['PreToolUse'][0]['hooks'][0]['command'])")"
 echo '{"tool_name":"Edit","tool_input":{"file_path":"x","old_string":"a","new_string":"b"}}' \
-  | timeout 5 python -m specwarden.hooks.pre_tool_use
+  | $HOOK
 echo "exit: $?"
 ```
+
+(macOS has no `timeout` — it is GNU coreutils. `gtimeout` via Homebrew, or press
+Ctrl-C if it hangs. A missing `timeout` exits 127, which looks like a hook
+failure but is the shell reporting a missing command.)
 
 If this hangs or times out, the issue is in the hook script or its environment (e.g., a `.pth` file that triggers an interactive import). Run with `python -v` to trace imports:
 

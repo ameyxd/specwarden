@@ -1,5 +1,13 @@
 # specwarden v1 implementation plan
 
+> **Historical record, written 2026-05-07. Do not use as a reference.** The hook
+> contract it specifies is wrong: it has `PreToolUse` emitting a bare top-level
+> `permissionDecision`, which Claude Code ignores, and `ask` where the shipped
+> hook returns `deny`. The code built from this plan therefore had a gate that
+> never blocked anything until 0.2.0. It also describes a `ready` handshake that
+> was never implemented. Kept unedited to show what was planned.
+> For the current contract see `docs/HOOKS.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship specwarden v1 — a Claude Code skill, three lifecycle hooks, and a Python CLI that gate filesystem edits behind a written spec, plus a reproducible three-arm eval, install scripts, examples, and a launch-ready README.

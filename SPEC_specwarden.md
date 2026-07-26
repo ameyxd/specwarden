@@ -43,7 +43,7 @@ Three pieces, each does one thing:
 **Piece 1: the SKILL.md.** Defines four slash commands: `/spec`, `/trace`, `/coverage`, `/spec-help`. The skill description is loaded into context on session start; full content loads only when invoked. This is the user-facing entry point.
 
 **Piece 2: the hooks.** Two hooks run inside Claude Code's lifecycle:
-- `PreToolUse` on `Edit` and `Write`: checks if `.claude/specs/active` is set. If not, returns a JSON response with `permissionDecision: ask` and a message instructing Claude to invoke `/spec` first. If a spec exists, allows the edit and pipes the diff metadata to the post-hook.
+- `PreToolUse` on `Edit` and `Write`: checks `.claude/specs/active` and the spec file it names. If no spec is active, or the active one still has unwritten sections, it returns a `deny` nested under `hookSpecificOutput` with a message instructing Claude to invoke `/spec` first. If a written spec is active, it allows the edit and the post-hook records it.
 - `PostToolUse` on `Edit` and `Write`: appends the change (file path, line range, brief summary) to `.claude/decisions/<active-spec-id>.md` with a timestamp.
 
 **Piece 3: the CLI.** A `specwarden` Python script wraps everything: `specwarden new <slug>` creates a new spec from template, `specwarden activate <id>` sets the active spec, `specwarden coverage` reports what percentage of recent commits had spec coverage, `specwarden trace <commit>` prints the full chain (commit → decisions → spec) for a given commit hash.
@@ -198,7 +198,9 @@ specwarden status
 
 ## Slash command surface (inside Claude Code sessions)
 
-`/spec <slug>` creates and activates a spec. Opens an inline template; the user fills in the four sections. Until the user types "ready", no edits are permitted.
+`/spec <slug>` creates and activates a spec. Opens an inline template; the user fills in the four sections. Until all four sections contain real content, no `Edit` or `Write` call is permitted.
+
+*As implemented:* the `"ready"` handshake described in earlier drafts of this spec does not exist. Nothing in the hooks tracks a confirmation step — the gate reads the spec file on every tool call and checks section content only. The skill still asks the model to pause for the user, but that is a behavioural convention, not enforcement. Implementing a real handshake requires deciding where confirmation state lives and is deferred.
 
 `/trace [<commit>]` prints the full chain for a commit. Defaults to HEAD.
 
@@ -212,12 +214,21 @@ specwarden status
 
 ```json
 {
-  "permissionDecision": "ask",
-  "message": "specwarden: no active spec. Run /spec <slug> first to define what you're building."
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "specwarden: no active spec. Run /spec <slug> first to define what you're building before editing files."
+  },
+  "decision": "block",
+  "reason": "specwarden: no active spec. ..."
 }
 ```
 
-If a spec is active, the hook returns `{"permissionDecision": "allow"}` and writes a pending entry to a temp file that the `PostToolUse` hook will finalize.
+The nesting is load-bearing. Claude Code reads `hookSpecificOutput.permissionDecision`; a bare top-level `permissionDecision`, which earlier drafts of this spec described and which shipped through 0.1.0, is an unrecognised key and is ignored — the edit proceeds. The top-level `decision`/`reason` pair is the legacy form, retained on denials for older hosts.
+
+If a written spec is active, the hook returns an `allow` in the same nested shape. There is no temp-file handoff: `PostToolUse` independently reads `.claude/specs/active` and appends to the decisions log.
+
+Only exit code 2 blocks a `PreToolUse` call. Exit 1 is a non-blocking error, so a hook that cannot start fails open. specwarden exits 0 and carries the decision in the payload.
 
 `PostToolUse` reads the pending entry, the actual diff that was applied, and appends a structured entry to `.claude/decisions/<spec-id>.md`:
 

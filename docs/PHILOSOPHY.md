@@ -18,13 +18,41 @@ These are not model flaws in the sense of being fixable with a better model. The
 
 ## Why hooks, not behavioral rules
 
-The initial eval (see `evals/results/2026-05-11.md`) confirmed a pattern that anyone who has shipped a behavioral-rules skill has observed: the skill improves behavior on average, but not reliably. In the benchmark, arm B (skill in context, no hooks) had Claude self-restrain in every headless trial — the text alone was sufficient. But "sufficient in a headless benchmark with a capable model" is not the same as "sufficient in production with a distracted user, a weaker model, or a prompt that makes shipping feel urgent."
+A behavioral-rules skill improves behavior on average, but not reliably. "Reliable enough in a headless benchmark with a capable model" is not the same as "reliable with a distracted user, a weaker model, or a prompt that makes shipping feel urgent." A rule that holds most of the time is a prior, not a rule, and you learn which one you had after the diff exists.
 
-The PreToolUse hook is the backstop. When a Claude Code session tries to call `Edit`, `Write`, `MultiEdit`, or `NotebookEdit`, the hook intercepts the call and checks `.claude/specs/active`. If no spec is active, the hook returns `permissionDecision: ask` and a message telling the agent to run `/spec` first. The file system literally does not accept the edit.
+The PreToolUse hook is the backstop. When a session calls `Edit`, `Write`, `MultiEdit` or `NotebookEdit`, the hook checks `.claude/specs/active` and the spec it names. With no active spec, or one whose four sections are still unwritten, it returns a `deny` and the tool call does not run.
 
 This is the same insight as Karpathy CLAUDE.md, but with mechanical enforcement instead of advisory text. The advisory layer (the skill) is still present — it shapes model behavior before the hook fires. The hook is the fallback for the cases where advisory is not enough.
 
-The benchmark finding is worth stating honestly: in the current five-fixture eval, arm C (skill + hooks) was not measurably better than arm B (skill only) because Claude never attempted an edit while the skill was in context. The hooks never fired. The value of enforcement is exactly in the tail — the cases where the agent would have ignored the advisory text. That tail cannot be measured with five headless tasks against a capable model. It can be designed against by adding the hook.
+### What the enforcement layer does and does not reach
+
+The gate covers the four editing tools and nothing else. A file written through
+`cat >`, `sed -i` or `tee` is not intercepted and not logged. Saying "the file
+system literally does not accept the edit", as earlier drafts of this document
+did, was wrong: it is the *tool call* that is refused. This is a guardrail
+against an agent that drifts, not a sandbox against one working around you.
+
+### What the evals actually established
+
+`evals/results/2026-07-25.md` is the current run; `2026-05-11.md` is superseded
+and its numbers are withdrawn.
+
+The measured result is narrow: with hooks wired, 20 of 20 edit attempts were
+blocked; without them, 0 of 27. That is evidence the gate holds, and nothing
+more. The gated cells changed zero files because no spec was active, so they
+completed no work — that is the gate working, not a tidier diff. Whether
+specwarden reduces out-of-scope edits is still unmeasured.
+
+The earlier run reported that the skill alone produced near-total self-restraint
+and concluded the hooks were redundant. It could not have shown that: every arm
+ran with `--bare`, which disables hooks. The behavioural finding also failed to
+reproduce — no spec file was written in any cell of the re-run. The honest
+position is that advisory and enforcement have not been cleanly compared, and
+the case for the hook rests on the argument above rather than on a measurement.
+
+One thing the re-run did show: an agent told *why* it was blocked stops after
+one attempt, while an agent left to guess probes the gate — 5 edit attempts
+against 15. The skill's measured contribution is fewer wasted retries.
 
 ## The four-section template
 
