@@ -1,0 +1,226 @@
+[
+  {
+    "task": "task_001_add_auth",
+    "arm": "A",
+    "mode": "standard",
+    "wall_seconds": 85.02297929208726,
+    "files_modified": 2,
+    "files_changed": [
+      "app.py",
+      "requirements.txt"
+    ],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_001_add_auth_A_std_1785036946.jsonl"
+  },
+  {
+    "task": "task_001_add_auth",
+    "arm": "B",
+    "mode": "standard",
+    "wall_seconds": 93.52929354109801,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_001_add_auth_B_std_1785037031.jsonl"
+  },
+  {
+    "task": "task_001_add_auth",
+    "arm": "C",
+    "mode": "standard",
+    "wall_seconds": 198.53030341607518,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_001_add_auth_C_std_1785037125.jsonl"
+  },
+  {
+    "task": "task_001_add_auth",
+    "arm": "D",
+    "mode": "standard",
+    "wall_seconds": 148.31479258299805,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_001_add_auth_D_std_1785037324.jsonl"
+  },
+  {
+    "task": "task_002_refactor_logger",
+    "arm": "A",
+    "mode": "standard",
+    "wall_seconds": 43.773804707918316,
+    "files_modified": 2,
+    "files_changed": [
+      "logger.py",
+      "usage.py"
+    ],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_002_refactor_logger_A_std_1785037472.jsonl"
+  },
+  {
+    "task": "task_002_refactor_logger",
+    "arm": "B",
+    "mode": "standard",
+    "wall_seconds": 166.14079266716726,
+    "files_modified": 2,
+    "files_changed": [
+      "logger.py",
+      "usage.py"
+    ],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_002_refactor_logger_B_std_1785037516.jsonl"
+  },
+  {
+    "task": "task_002_refactor_logger",
+    "arm": "C",
+    "mode": "standard",
+    "wall_seconds": 213.83320337510668,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_002_refactor_logger_C_std_1785037682.jsonl"
+  },
+  {
+    "task": "task_002_refactor_logger",
+    "arm": "D",
+    "mode": "standard",
+    "wall_seconds": 249.38392945891246,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_002_refactor_logger_D_std_1785037896.jsonl"
+  },
+  {
+    "task": "task_003_add_test_suite",
+    "arm": "A",
+    "mode": "standard",
+    "wall_seconds": 66.04061258304864,
+    "files_modified": 1,
+    "files_changed": [
+      "test_cli.py"
+    ],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_003_add_test_suite_A_std_1785038146.jsonl"
+  },
+  {
+    "task": "task_003_add_test_suite",
+    "arm": "B",
+    "mode": "standard",
+    "wall_seconds": 207.9086459579412,
+    "files_modified": 3,
+    "files_changed": [
+      "README.md",
+      "conftest.py",
+      "tests/test_cli.py"
+    ],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_003_add_test_suite_B_std_1785038212.jsonl"
+  },
+  {
+    "task": "task_003_add_test_suite",
+    "arm": "C",
+    "mode": "standard",
+    "wall_seconds": 243.79868708294816,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_003_add_test_suite_C_std_1785038420.jsonl"
+  },
+  {
+    "task": "task_003_add_test_suite",
+    "arm": "D",
+    "mode": "standard",
+    "wall_seconds": 132.67976337508298,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_003_add_test_suite_D_std_1785038664.jsonl"
+  },
+  {
+    "task": "task_004_fix_race",
+    "arm": "A",
+    "mode": "standard",
+    "wall_seconds": 31.05251175002195,
+    "files_modified": 2,
+    "files_changed": [
+      "counter.py",
+      "test_counter.py"
+    ],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_004_fix_race_A_std_1785038797.jsonl"
+  },
+  {
+    "task": "task_004_fix_race",
+    "arm": "B",
+    "mode": "standard",
+    "wall_seconds": 96.84187416709028,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_004_fix_race_B_std_1785038828.jsonl"
+  },
+  {
+    "task": "task_004_fix_race",
+    "arm": "C",
+    "mode": "standard",
+    "wall_seconds": 142.43508412502706,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_004_fix_race_C_std_1785038925.jsonl"
+  },
+  {
+    "task": "task_004_fix_race",
+    "arm": "D",
+    "mode": "standard",
+    "wall_seconds": 303.1024616670329,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_004_fix_race_D_std_1785039067.jsonl"
+  },
+  {
+    "task": "task_005_add_endpoint",
+    "arm": "A",
+    "mode": "standard",
+    "wall_seconds": 18.99790745903738,
+    "files_modified": 2,
+    "files_changed": [
+      "db.py",
+      "routes.py"
+    ],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_005_add_endpoint_A_std_1785039371.jsonl"
+  },
+  {
+    "task": "task_005_add_endpoint",
+    "arm": "B",
+    "mode": "standard",
+    "wall_seconds": 102.74273433396593,
+    "files_modified": 2,
+    "files_changed": [
+      "db.py",
+      "routes.py"
+    ],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_005_add_endpoint_B_std_1785039390.jsonl"
+  },
+  {
+    "task": "task_005_add_endpoint",
+    "arm": "C",
+    "mode": "standard",
+    "wall_seconds": 116.8228143749293,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_005_add_endpoint_C_std_1785039565.jsonl"
+  },
+  {
+    "task": "task_005_add_endpoint",
+    "arm": "D",
+    "mode": "standard",
+    "wall_seconds": 129.18069520802237,
+    "files_modified": 0,
+    "files_changed": [],
+    "exit_status": 0,
+    "log_path": "evals/results/_run2026-07-25/task_005_add_endpoint_D_std_1785039682.jsonl"
+  }
+]

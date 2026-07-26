@@ -81,32 +81,39 @@ one that is trying to get around it.
 
 ## Benchmark numbers
 
-One run, five fixture tasks, one trial per cell (15 cells). Arm A (vanilla Claude
-Code) modified **8 files** in total; arm B (skill only) modified **2** and arm C
-(skill + hooks) **1**.
+Four arms, five fixture tasks, one trial per cell (20 cells). The measured
+claim is narrow and it is about the gate:
 
-Read that number carefully, because it is weaker than it looks:
+**With hooks active, 20 of 20 edit attempts were blocked. Without them, 0 of 27
+were.**
 
-- **It counts files touched, not files touched out of scope.** `evals/measure.py`
-  records `git diff --name-only HEAD | wc -l`. Nothing in the harness compares a
-  modified file against a declared in-scope set, so this is not a scope-creep
-  metric. Across the whole run, exactly **one** file was hand-identified as
-  genuinely out of scope (a `README.md` touch in task_001 arm A).
-- **Arms B and C mostly modified nothing because they did not finish the task.**
-  In all ten B and C cells, Claude wrote a spec and halted waiting for a human
-  `ready` that the headless runner never sends. A low file count here reflects an
-  incomplete task, not restraint.
-- **The hooks were not exercised at all.** The PreToolUse hook never fired in arm
-  C, so arm C's number is attributable to the skill prompt text, not to the
-  enforcement mechanism this tool exists to provide.
-- **n=1 per cell**, no variance estimate, and one known-broken fixture (task_003
-  arm A produced no edits at all).
+| | Edit attempts | Blocked | Files changed |
+|---|---:|---:|---:|
+| No hooks | 27 | **0** | 16 |
+| Hooks wired | 20 | **20** | **0** |
 
-So: the skill text measurably changes behaviour in headless runs. The enforcement
-layer is unmeasured. A benchmark that isolates it still needs to be written — see
-the follow-up designs in the results doc. Total run cost: $3.41.
+That is the whole of what this benchmark establishes. What it does not
+establish, stated plainly:
 
-Full methodology, scorecard, and raw session logs: [evals/results/2026-05-11.md](evals/results/2026-05-11.md).
+- **"0 files changed" is not tidiness, it is zero work.** No spec was active in
+  the gated cells, so the gate refused every edit and no task got done. It shows
+  the gate holds. It says nothing about diff quality.
+- **Out-of-scope edits are still unmeasured.** The harness counts changed files;
+  nothing compares them against a declared in-scope set.
+- **The gate covers tool calls, not the filesystem.** See the section above — a
+  `cat >` walks past it.
+- **n=1 per cell.** Five tasks, single trial, no variance estimate.
+
+An earlier run of this benchmark reported a 75–87% reduction in files modified
+and concluded the skill text was doing the work. That run passed `--bare` to
+every arm, which disables hooks, so it never tested enforcement at all; its file
+counter also ignored created files. Its behavioural finding did not reproduce
+here — no spec file was written in any cell of this run, and the skill-only arm
+changed 7 files against the control's 9. Treat the old numbers as withdrawn.
+Total run cost: $10.47.
+
+Full methodology, scorecard, and the reproduction gap: [evals/results/2026-07-25.md](evals/results/2026-07-25.md).
+Superseded run, kept for the record: [evals/results/2026-05-11.md](evals/results/2026-05-11.md).
 Reproduce with `make eval` (~15 min, ~$3.50 in API tokens).
 
 ## Install and first spec
