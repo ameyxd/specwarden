@@ -296,6 +296,43 @@ def changed_files(workdir: Path) -> list[str]:
     return sorted(paths)
 
 
+def write_summary(out_dir: Path, results: list[RunResult], mode: str) -> Path:
+    """Write summary.json for the cells finished so far.
+
+    Called after every cell, not only at the end of the sweep. summary.json is
+    the only index measure.py has: without it the transcripts on disk cannot be
+    scored at all. Writing once at the end means a sweep killed at cell 19 of 20
+    loses every completed cell, which is the opposite of what a watchdog is for.
+
+    Written atomically via a temp file and replace, so a kill mid-write leaves
+    the previous good summary rather than truncated JSON.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    payload = [
+        {
+            "task": r.task,
+            "arm": r.arm,
+            "mode": mode,
+            "wall_seconds": r.wall_seconds,
+            "files_modified": r.files_modified,
+            "files_changed": list(r.files_changed),
+            "exit_status": r.exit_status,
+            "timed_out": r.timed_out,
+            "log_path": (
+                str(r.log_path.relative_to(REPO_ROOT))
+                if r.log_path.is_relative_to(REPO_ROOT)
+                else str(r.log_path)
+            ),
+        }
+        for r in results
+    ]
+    summary_path = out_dir / "summary.json"
+    tmp_path = summary_path.with_suffix(".json.tmp")
+    tmp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp_path.replace(summary_path)
+    return summary_path
+
+
 def run_one(
     fixture: Path,
     arm: str,
@@ -402,32 +439,10 @@ def main(argv: list[str] | None = None) -> int:
             f"exit={result.exit_status} | {status}",
             flush=True,
         )
+        # Checkpoint after every cell so a killed sweep is still scoreable.
+        write_summary(args.out, results, mode)
 
-    summary_path = args.out / "summary.json"
-    summary_path.write_text(
-        json.dumps(
-            [
-                {
-                    "task": r.task,
-                    "arm": r.arm,
-                    "mode": mode,
-                    "wall_seconds": r.wall_seconds,
-                    "files_modified": r.files_modified,
-                    "files_changed": list(r.files_changed),
-                    "exit_status": r.exit_status,
-                    "timed_out": r.timed_out,
-                    "log_path": (
-                        str(r.log_path.relative_to(REPO_ROOT))
-                        if r.log_path.is_relative_to(REPO_ROOT)
-                        else str(r.log_path)
-                    ),
-                }
-                for r in results
-            ],
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+    summary_path = write_summary(args.out, results, mode)
     print(f"\nsummary written to {summary_path}", flush=True)
     timeouts = [r for r in results if r.timed_out]
     if timeouts:
