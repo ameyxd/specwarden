@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -89,7 +90,39 @@ def test_init_writes_settings_with_hooks(runner: CliRunner, tmp_path: Path):
 
     pre = settings["hooks"]["PreToolUse"][0]
     assert pre["matcher"] == "Edit|Write|MultiEdit|NotebookEdit"
-    assert pre["hooks"][0]["command"] == "python -m specwarden.hooks.pre_tool_use"
+    assert pre["hooks"][0]["command"].endswith("-m specwarden.hooks.pre_tool_use")
+
+
+def test_init_writes_a_resolvable_interpreter_path(runner: CliRunner, tmp_path: Path):
+    """A bare `python` is absent on stock macOS and cannot import a pipx install."""
+    import json
+    import shlex
+
+    runner.invoke(app, ["init", "--root", str(tmp_path)])
+    settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    interpreter = shlex.split(settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"])[0]
+    assert Path(interpreter).is_absolute()
+
+
+def test_init_hook_command_actually_runs(runner: CliRunner, tmp_path: Path):
+    """End-to-end: the command `init` writes must execute and emit a decision."""
+    import json
+    import subprocess
+
+    runner.invoke(app, ["init", "--root", str(tmp_path)])
+    settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    command = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    proc = subprocess.run(
+        command,
+        shell=True,
+        input=json.dumps({"tool_name": "Edit"}),
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")},
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
 def test_init_preserves_existing_settings(runner: CliRunner, tmp_path: Path):

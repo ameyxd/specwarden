@@ -64,17 +64,30 @@ No edits land until the spec exists. Every edit that does land is logged.
 
 ## Benchmark numbers
 
-Across five fixture tasks, arm A (vanilla Claude Code) modified **8 files** in
-total. With specwarden in context, arm B (skill only) and arm C (skill + hooks)
-modified **2 and 1 files** respectively — a 75–87% reduction in out-of-scope
-file modifications.
+One run, five fixture tasks, one trial per cell (15 cells). Arm A (vanilla Claude
+Code) modified **8 files** in total; arm B (skill only) modified **2** and arm C
+(skill + hooks) **1**.
 
-**Honest caveat:** in headless mode, the skill text alone caused Claude to draft
-a spec and halt, waiting for human `ready` confirmation that the runner never
-sent. Arms B and C behaved nearly identically in this benchmark because the
-PreToolUse hook never had a chance to fire — Claude self-restrained before
-attempting any edit. The enforcement value of arm C is in the tail: sessions
-where a capable model would otherwise skip the advisory. Total run cost: $3.41.
+Read that number carefully, because it is weaker than it looks:
+
+- **It counts files touched, not files touched out of scope.** `evals/measure.py`
+  records `git diff --name-only HEAD | wc -l`. Nothing in the harness compares a
+  modified file against a declared in-scope set, so this is not a scope-creep
+  metric. Across the whole run, exactly **one** file was hand-identified as
+  genuinely out of scope (a `README.md` touch in task_001 arm A).
+- **Arms B and C mostly modified nothing because they did not finish the task.**
+  In all ten B and C cells, Claude wrote a spec and halted waiting for a human
+  `ready` that the headless runner never sends. A low file count here reflects an
+  incomplete task, not restraint.
+- **The hooks were not exercised at all.** The PreToolUse hook never fired in arm
+  C, so arm C's number is attributable to the skill prompt text, not to the
+  enforcement mechanism this tool exists to provide.
+- **n=1 per cell**, no variance estimate, and one known-broken fixture (task_003
+  arm A produced no edits at all).
+
+So: the skill text measurably changes behaviour in headless runs. The enforcement
+layer is unmeasured. A benchmark that isolates it still needs to be written — see
+the follow-up designs in the results doc. Total run cost: $3.41.
 
 Full methodology, scorecard, and raw session logs: [evals/results/2026-05-11.md](evals/results/2026-05-11.md).
 Reproduce with `make eval` (~15 min, ~$3.50 in API tokens).

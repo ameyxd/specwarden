@@ -86,13 +86,34 @@ For edits where a full spec is genuine overhead — typo fixes, dependency versi
 
 ## Hook contract version
 
-This skill targets the Claude Code hook contract published in 2026-Q1:
+Verified against Claude Code 2.1.218.
 
-- `PreToolUse` returns `{"permissionDecision": "allow" | "deny" | "ask", "message": "..."}` over stdout.
+- `PreToolUse` writes the decision to stdout **nested under `hookSpecificOutput`**:
+
+  ```json
+  {
+    "hookSpecificOutput": {
+      "hookEventName": "PreToolUse",
+      "permissionDecision": "deny",
+      "permissionDecisionReason": "specwarden: no active spec."
+    }
+  }
+  ```
+
+  A bare top-level `permissionDecision` is parsed as an unknown key and silently
+  ignored — the edit proceeds. On a deny, specwarden also emits the legacy
+  top-level `decision: "block"` / `reason` pair, which older hosts honour.
 - `PostToolUse` returns nothing (exit 0); side effects happen on disk.
 - `SessionStart` writes a banner to stdout.
 
-If the hook contract changes in a later Claude Code release, this skill must be updated to match. The CI workflow at `.github/workflows/ci.yml` runs a weekly job that exercises the hook contract against the latest published Claude Code release to catch drift early.
+Exit codes matter as much as the payload: for `PreToolUse`, **only exit 2 blocks**.
+Exit 1 is a non-blocking error, so a hook that crashes fails *open* and enforcement
+silently disappears. specwarden exits 0 and carries the decision in the payload.
+
+`tests/test_pre_tool_use.py` asserts this exact wire format, including that no bare
+top-level `permissionDecision` is emitted. Those assertions are what catch contract
+drift; there is no automated check against unreleased Claude Code versions, so a
+future release could still change the contract without CI noticing.
 
 ## Files this skill writes
 

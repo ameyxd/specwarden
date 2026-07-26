@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shlex
+import sys
 from pathlib import Path
 
 import typer
@@ -16,29 +18,41 @@ from .spec import (
 )
 from .trace import trace_commit
 
-SETTINGS_TEMPLATE = {
-    "hooks": {
-        "PreToolUse": [
-            {
-                "matcher": "Edit|Write|MultiEdit|NotebookEdit",
-                "hooks": [
-                    {"type": "command", "command": "python -m specwarden.hooks.pre_tool_use"}
-                ],
-            }
-        ],
-        "PostToolUse": [
-            {
-                "matcher": "Edit|Write|MultiEdit|NotebookEdit",
-                "hooks": [
-                    {"type": "command", "command": "python -m specwarden.hooks.post_tool_use"}
-                ],
-            }
-        ],
-        "SessionStart": [
-            {"hooks": [{"type": "command", "command": "python -m specwarden.hooks.session_start"}]}
-        ],
+EDIT_MATCHER = "Edit|Write|MultiEdit|NotebookEdit"
+
+
+def _hook_command(module: str) -> str:
+    """Absolute interpreter path for a hook module.
+
+    A bare `python` is wrong twice over: many hosts (stock macOS, Debian) ship
+    only `python3`, and under a pipx install specwarden lives in its own venv,
+    so no ambient interpreter can import it. `sys.executable` is the one that
+    just ran `specwarden init`, so it is guaranteed to resolve the module.
+    """
+    return f"{shlex.quote(sys.executable)} -m specwarden.hooks.{module}"
+
+
+def _settings_template() -> dict:
+    return {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": EDIT_MATCHER,
+                    "hooks": [{"type": "command", "command": _hook_command("pre_tool_use")}],
+                }
+            ],
+            "PostToolUse": [
+                {
+                    "matcher": EDIT_MATCHER,
+                    "hooks": [{"type": "command", "command": _hook_command("post_tool_use")}],
+                }
+            ],
+            "SessionStart": [
+                {"hooks": [{"type": "command", "command": _hook_command("session_start")}]}
+            ],
+        }
     }
-}
+
 
 app = typer.Typer(add_completion=False, help="specwarden: spec-first discipline, with teeth.")
 
@@ -56,7 +70,9 @@ def init(root: Path | None = ROOT_OPTION) -> None:
     paths.ensure_dirs()
     settings_path = paths.claude_dir / "settings.json"
     if not settings_path.exists():
-        settings_path.write_text(json.dumps(SETTINGS_TEMPLATE, indent=2) + "\n", encoding="utf-8")
+        settings_path.write_text(
+            json.dumps(_settings_template(), indent=2) + "\n", encoding="utf-8"
+        )
         typer.echo(f"initialized: {paths.claude_dir} (wrote settings.json)")
     else:
         typer.echo(f"initialized: {paths.claude_dir} (settings.json already exists; left alone)")
