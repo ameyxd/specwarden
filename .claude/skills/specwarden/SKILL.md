@@ -9,7 +9,9 @@ description: Use when starting any non-trivial code change in this repo — refu
 
 ## What this does
 
-specwarden enforces a spec-first discipline: before any Edit or Write tool call lands, a structured one-page spec must exist and be marked ready. The PreToolUse hook reads `.claude/specs/active` on every tool call; if no spec is active, the hook blocks the call and tells you why. This makes the discipline mechanical rather than voluntary.
+specwarden enforces a spec-first discipline: before any Edit or Write tool call lands, a structured one-page spec must exist and be marked ready. The PreToolUse hook reads `.claude/specs/active` on every tool call; if no spec is active, the hook denies the call and tells you why. This makes the discipline mechanical rather than voluntary.
+
+The gate's reach is exactly its matcher: `Edit|Write|MultiEdit|NotebookEdit`. Shell commands are not matched, so writing a file through `cat >`, `sed -i` or `tee` bypasses both the gate and the decisions log. Do not route edits through Bash to get around a missing spec — write the spec. If a spec would genuinely be absurd for the change, `SPECWARDEN_QUICKFIX=1` is the sanctioned bypass and leaves an honest uncovered commit behind.
 
 Once a spec is active, every edit is logged to `.claude/decisions/<spec-id>.md` with a timestamp and a reference back to the spec. When you commit, a `Spec: <id>` trailer is appended automatically (requires `specwarden git-hook install`). The result is a chain you can walk in either direction: from a commit to its spec, or from a spec to every file it touched.
 

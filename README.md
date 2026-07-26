@@ -60,7 +60,24 @@ Claude: [edits src/auth/middleware.py]
 - Tool: Write
 ```
 
-No edits land until the spec exists. Every edit that does land is logged.
+No edit *tool call* lands until the spec exists, and every one that does is logged.
+
+## What the gate does and does not cover
+
+The PreToolUse hook matches `Edit|Write|MultiEdit|NotebookEdit`. That is the
+whole of its reach, and it is worth being blunt about the consequence:
+
+- **Covered.** Claude Code's file-editing tools. With no active spec, the call is
+  denied and the model is told why.
+- **Not covered.** Shell commands. An agent that writes a file with
+  `cat > file`, `sed -i`, or `tee` walks straight past the gate, and PostToolUse
+  does not log it either. Verified, not theorised: with hooks live and no active
+  spec, "append to calc.py using a Bash heredoc" succeeded on the first try.
+
+Adding `Bash` to the matcher would deny every shell command without a spec —
+including `ls`, `grep`, and the test run — so specwarden does not do it. Treat
+the gate as a guardrail against an agent that drifts, not as a sandbox against
+one that is trying to get around it.
 
 ## Benchmark numbers
 
