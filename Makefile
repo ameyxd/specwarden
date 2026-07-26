@@ -15,4 +15,8 @@ fmt:
 	ruff format .
 
 eval:
-	python evals/run_eval.py
+	python3 evals/run_eval.py --all-tasks --all-arms
+
+eval-enforcement:
+	python3 evals/run_eval.py --all-tasks --arm B --adversarial --out evals/results/_adv_B
+	python3 evals/run_eval.py --all-tasks --arm C --adversarial --out evals/results/_adv_C

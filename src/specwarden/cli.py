@@ -22,14 +22,25 @@ EDIT_MATCHER = "Edit|Write|MultiEdit|NotebookEdit"
 
 
 def _hook_command(module: str) -> str:
-    """Absolute interpreter path for a hook module.
+    """Absolute interpreter path plus absolute script path for a hook.
 
-    A bare `python` is wrong twice over: many hosts (stock macOS, Debian) ship
-    only `python3`, and under a pipx install specwarden lives in its own venv,
-    so no ambient interpreter can import it. `sys.executable` is the one that
-    just ran `specwarden init`, so it is guaranteed to resolve the module.
+    Three ways the old `python -m specwarden.hooks.<module>` failed:
+
+    - Many hosts (stock macOS, Debian) ship only `python3`, so bare `python`
+      is not on PATH at all.
+    - Under a pipx install specwarden lives in its own venv, so no ambient
+      interpreter can import it.
+    - Even the right interpreter can fail to resolve `-m` when an editable
+      install's .pth file is not processed.
+
+    All three surface as a non-zero exit, and for PreToolUse only exit 2 blocks
+    — exit 1 is a non-blocking error, so a hook that cannot start fails *open*
+    and enforcement silently disappears. Invoking the hook by absolute file path
+    sidesteps package resolution entirely; the hook modules are stdlib-only and
+    import nothing from specwarden, so they run standalone.
     """
-    return f"{shlex.quote(sys.executable)} -m specwarden.hooks.{module}"
+    script = Path(__file__).resolve().parent / "hooks" / f"{module}.py"
+    return f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"
 
 
 def _settings_template() -> dict:

@@ -33,7 +33,7 @@ def test_parse_jsonl_counts_questions(tmp_path: Path):
     ]
     log.write_text("\n".join(json.dumps(e) for e in events))
 
-    clarifications, tool_calls, cost, turns = parse_jsonl(log)
+    clarifications, tool_calls, cost, turns, _, _ = parse_jsonl(log)
 
     assert clarifications == 1
     assert tool_calls == 0
@@ -63,7 +63,7 @@ def test_parse_jsonl_counts_tool_calls(tmp_path: Path):
     ]
     log.write_text("\n".join(json.dumps(e) for e in events))
 
-    _, tool_calls, _, _ = parse_jsonl(log)
+    _, tool_calls, _, _, _, _ = parse_jsonl(log)
 
     assert tool_calls == 2
 
@@ -72,7 +72,7 @@ def test_parse_jsonl_handles_missing_result(tmp_path: Path):
     log = tmp_path / "session.jsonl"
     log.write_text(json.dumps({"type": "user", "message": {}}) + "\n")
 
-    clarifications, tool_calls, cost, turns = parse_jsonl(log)
+    clarifications, tool_calls, cost, turns, _, _ = parse_jsonl(log)
 
     assert clarifications == 0
     assert tool_calls == 0
@@ -121,6 +121,8 @@ def test_render_scorecard_table_shape():
             arm="A",
             wall_seconds=10.0,
             files_modified=2,
+            edit_attempts=1,
+            blocked_edits=1,
             clarification_count=0,
             tool_call_count=5,
             cost_usd=0.1234,
@@ -132,3 +134,102 @@ def test_render_scorecard_table_shape():
     assert "| Task | Arm | Wall (s) | Turns |" in table
     assert "task_001_demo" in table
     assert "$0.1234" in table
+
+
+def test_parse_jsonl_counts_edit_attempts(tmp_path: Path):
+    """Edit attempts separate "the hook stopped it" from "it never tried"."""
+    log = tmp_path / "session.jsonl"
+    events = [
+        {
+            "type": "assistant",
+            "uuid": "u1",
+            "message": {
+                "content": [
+                    {"type": "tool_use", "name": "Edit"},
+                    {"type": "tool_use", "name": "Bash"},
+                    {"type": "tool_use", "name": "Write"},
+                ]
+            },
+        },
+        {"type": "result", "total_cost_usd": 0.1, "num_turns": 1},
+    ]
+    log.write_text("\n".join(json.dumps(e) for e in events))
+
+    _, _, _, _, edit_attempts, _ = parse_jsonl(log)
+
+    assert edit_attempts == 2
+
+
+def test_parse_jsonl_counts_blocked_edits(tmp_path: Path):
+    log = tmp_path / "session.jsonl"
+    events = [
+        {
+            "type": "assistant",
+            "uuid": "u1",
+            "message": {"content": [{"type": "tool_use", "name": "Edit"}]},
+        },
+        {
+            "type": "user",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "content": "specwarden: no active spec. Run `/spec <slug>` first.",
+                    }
+                ]
+            },
+        },
+        {"type": "result", "total_cost_usd": 0.1, "num_turns": 2},
+    ]
+    log.write_text("\n".join(json.dumps(e) for e in events))
+
+    _, _, _, _, edit_attempts, blocked = parse_jsonl(log)
+
+    assert (edit_attempts, blocked) == (1, 1)
+
+
+def test_parse_jsonl_reads_blocks_from_structured_tool_results(tmp_path: Path):
+    """tool_result content arrives as a list of blocks, not only as a string."""
+    log = tmp_path / "session.jsonl"
+    events = [
+        {
+            "type": "user",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "content": [{"type": "text", "text": "specwarden: no active spec."}],
+                    }
+                ]
+            },
+        },
+        {"type": "result", "total_cost_usd": 0.1, "num_turns": 1},
+    ]
+    log.write_text("\n".join(json.dumps(e) for e in events))
+
+    _, _, _, _, _, blocked = parse_jsonl(log)
+
+    assert blocked == 1
+
+
+def test_unblocked_edit_is_not_counted_as_blocked(tmp_path: Path):
+    log = tmp_path / "session.jsonl"
+    events = [
+        {
+            "type": "assistant",
+            "uuid": "u1",
+            "message": {"content": [{"type": "tool_use", "name": "Edit"}]},
+        },
+        {
+            "type": "user",
+            "message": {
+                "content": [{"type": "tool_result", "content": "has been updated successfully"}]
+            },
+        },
+        {"type": "result", "total_cost_usd": 0.1, "num_turns": 2},
+    ]
+    log.write_text("\n".join(json.dumps(e) for e in events))
+
+    _, _, _, _, edit_attempts, blocked = parse_jsonl(log)
+
+    assert (edit_attempts, blocked) == (1, 0)
