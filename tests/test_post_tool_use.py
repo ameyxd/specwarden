@@ -55,3 +55,34 @@ def test_noop_when_non_editing_tool(tmp_path: Path):
     _run(payload, cwd=tmp_path)
 
     assert not list((tmp_path / ".claude" / "decisions").iterdir())
+
+
+def test_decisions_log_records_repo_relative_paths(tmp_path: Path):
+    """An absolute path puts the operator's machine layout into a committed file."""
+    (tmp_path / ".claude" / "specs").mkdir(parents=True)
+    (tmp_path / ".claude" / "specs" / "active").write_text("2026-07-26_demo\n")
+    _run(
+        {
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(tmp_path / "src" / "auth" / "jwt.py"),
+                "old_string": "a",
+                "new_string": "b",
+            },
+        },
+        cwd=tmp_path,
+    )
+    log = (tmp_path / ".claude" / "decisions" / "2026-07-26_demo.md").read_text()
+    assert "- File: src/auth/jwt.py" in log
+
+
+def test_paths_outside_the_repo_stay_absolute(tmp_path: Path):
+    (tmp_path / ".claude" / "specs").mkdir(parents=True)
+    (tmp_path / ".claude" / "specs" / "active").write_text("2026-07-26_demo\n")
+    outside = tmp_path.parent / "elsewhere.py"
+    _run(
+        {"tool_name": "Edit", "tool_input": {"file_path": str(outside), "old_string": "a"}},
+        cwd=tmp_path,
+    )
+    log = (tmp_path / ".claude" / "decisions" / "2026-07-26_demo.md").read_text()
+    assert str(outside) in log

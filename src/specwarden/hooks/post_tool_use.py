@@ -18,9 +18,26 @@ def _active_spec_id(repo: Path) -> str | None:
     return text or None
 
 
-def _summary(payload: dict) -> tuple[str, str]:
+def _relative_to_repo(file_path: str, repo: Path) -> str:
+    """Record repo-relative paths.
+
+    Claude Code passes an absolute `file_path`. Writing it verbatim puts the
+    operator's machine layout into a file that is meant to be committed and read
+    by someone else six months later, and makes the log differ between two
+    checkouts of the same repo. Paths outside the repo stay absolute, since
+    there is nothing sensible to make them relative to.
+    """
+    if not file_path or file_path == "<unknown>":
+        return "<unknown>"
+    try:
+        return Path(file_path).resolve().relative_to(repo.resolve()).as_posix()
+    except ValueError:
+        return file_path
+
+
+def _summary(payload: dict, repo: Path) -> tuple[str, str]:
     inp = payload.get("tool_input", {}) or {}
-    file_path = inp.get("file_path", "<unknown>")
+    file_path = _relative_to_repo(inp.get("file_path", "<unknown>"), repo)
     if "old_string" in inp:
         line_range = "edit"
     elif "content" in inp:
@@ -42,7 +59,7 @@ def main() -> int:
     if spec_id is None:
         return 0
 
-    file_path, line_range = _summary(payload)
+    file_path, line_range = _summary(payload, repo)
     log_dir = repo / ".claude" / "decisions"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / f"{spec_id}.md"

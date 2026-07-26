@@ -56,6 +56,7 @@ uv.lock
 
 # Eval artifacts that should not be committed wholesale
 evals/results/_local/
+evals/results/_run*/
 evals/.cache/
 
 # Local secrets
